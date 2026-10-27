@@ -1,0 +1,21 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),crypto=require('crypto');
+const html=fs.readFileSync(__dirname+'/index.html','utf8');
+const core=html.split('// CORE START: reine Berechnungen ohne Oberfläche; separat prüfbar.')[1].split('// CORE END')[0];
+const moduleCode=html.split('/* PERSONAL-MASSENIMPORT')[1].split('/* ARBEITSOBERFLÄCHE 2026-10:')[0];
+const ctx={console,crypto,Date,document:{addEventListener(){}},options:{weekly:'40',start:'08:00',team:'Standard',header:'auto'},existing:[]};vm.createContext(ctx);vm.runInContext(core+'\n/* PERSONAL-MASSENIMPORT'+moduleCode,ctx);
+const run=s=>vm.runInContext(s,ctx),parse=(text,existing=[])=>{ctx.input=text;ctx.existing=existing;return run('buildPeopleImport(input,options,existing)')};
+let r=parse('\uFEFFName;Team;Wochenstunden;Beginn\r\nMüller;Nord;30;08:00\r\n"Meier; Anna";Süd;20;09:00');assert.equal(r.length,2);assert.equal(r[0].person.schedule[1].hours,6);assert.equal(r[1].person.name,'Meier; Anna');
+r=parse('Name\tTeam\tWochenstunden\tBeginn\nÄnne\tNord\t37,5\t8:30');assert.equal(r[0].person.schedule[1].hours,7.5);assert.equal(r[0].person.schedule[1].start,'08:30');
+r=parse('Name,Team,Wochenstunden,Beginn\n"Anna, B.",West,"37,5",08:00');assert.equal(r[0].person.schedule[1].hours,7.5);
+r=parse('sep=;\nName;Team;Wochenstunden\nA;B;20');assert.equal(r[0].person.schedule[3].hours,4);
+r=parse('Erika\nAlex');assert.equal(r.length,2);assert.equal(r[1].person.team,'Standard');assert.equal(r[1].person.schedule[1].hours,8);
+r=parse('Vorname;Nachname;Mo;Di;Mi;Do;Fr;Sa;So;Mo_Beginn\nErika;Muster;8;0;6;0;0;4;0;09:00');assert.equal(r[0].person.name,'Erika Muster');assert.equal(r[0].person.schedule[1].start,'09:00');assert.equal(r[0].person.schedule[6].hours,4);assert(!r[0].person.schedule[2]);
+r=parse('Name;Wochenstunden;Mo;Di\nErika;30;8;6');assert.match(r[0].error,/passen nicht/);
+r=parse('Erika\nerika',[{name:'Erika'}]);assert(r.every(x=>x.duplicate));
+r=parse('Neu\nNeu');assert(!r[0].duplicate);assert(r[1].duplicate);
+for(const text of ['Name;Mo\nA;0','Name;Wochenstunden\nA;-4','Name;Beginn;Mo\nA;23:00;2','Name;Beginn\nA;25:00','Name;Wochenstunden\nA;3abc'])assert(parse(text)[0].error,text);
+for(const text of ['Name;Unsinn\nA;B','Name;Name\nA;A','"A','A;B;40;08:00;extra']){let error=false;try{error=!!parse(text)[0]?.error}catch{error=true}assert(error,text)}
+assert.throws(()=>parse(Array.from({length:1001},(_,i)=>'Person '+i).join('\n')),/1000/);
+r=parse('Name;Team\n"A ""Test""";B');assert.equal(r[0].person.name,'A "Test"');
+for(const m of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g))if(!m[1].includes('application/json'))new vm.Script(m[2]);
+console.log('PASS: CSV/TSV, BOM und sep=, Dezimalkomma, Umlaute, quoted Felder, Namenslisten, Vor-/Nachnamen, individuelle Wochenmodelle, Dopplungen, fehlerhafte Daten, Importlimit, vollständige JS-Syntax.');
