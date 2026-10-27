@@ -60,3 +60,13 @@ assert(!/\b(?:fetch|XMLHttpRequest|WebSocket|sendBeacon)\s*\(/.test(html.replace
 const embedded=JSON.parse(html.match(/<script id="initial-data"[^>]*>([\s\S]*?)<\/script>/)[1]);
 assert.equal(embedded.demo,true);assert.equal(embedded.people.length,0);assert.equal(embedded.assignments.length,0);
 console.log('PASS: Schnellzuweisung, Halbtage, Konflikt-/Arbeitszeitprüfung, Notizvalidierung, XSS-Escaping, lokale Sicherung, keine Netzwerk-API und leere Demo-Startdaten.');
+
+run("validateCellNotes({t:{'2026-10-26':'Test'}})");
+assert.throws(()=>run("validateCellNotes({t:{'2026-02-30':'Test'}})"));
+run("db.cellNotes={m0:{'2026-10-26':'<b>Nur Person 0</b>'}};render()");
+assert(run("cellNoteTooltip('m0',{start:'2026-10-26',end:'2026-10-26'})").includes('Nur Person 0'));
+assert.equal(run("cellNoteTooltip('m1',{start:'2026-10-26',end:'2026-10-26'})"),'');
+assert.equal(run("cellNoteTooltip('m0',{start:'2026-10-27',end:'2026-10-27'})"),'');
+assert(node('#boardBody').innerHTML.includes('comment-corner'));
+assert(node('#dayNotePrint').innerHTML.includes('&lt;b&gt;Nur Person 0'));
+console.log('PASS: personenbezogene Kommentare, Tagesabgrenzung, Validierung, Markierung und sicherer Druck.');
