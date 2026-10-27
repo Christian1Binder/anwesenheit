@@ -1,0 +1,10 @@
+# Nur explizit freigegebener Programmcode darf versioniert werden.
+# Nutzdaten bitte zusätzlich AUSSERHALB dieses Repository-Ordners speichern.
+/*
+!/.gitignore
+!/index.html
+!/README.md
+!/test_start.cjs
+!/test_import.cjs
+!/test_shared.cjs
+!/beispiel_personal.csv
