@@ -8,10 +8,10 @@ Keine Installation, kein Webserver, keine externen Bibliotheken erforderlich.
 1. `index.html` herunterladen und lokal in Edge öffnen.
 2. Die Beispieldaten sind ausschließlich fiktiv. Mit „Eigene Planung starten“ leeren.
 3. Unter „Verwalten“ Personal erfassen oder CSV/Excel-Zellen importieren.
-4. Mit „+ Vorhaben“ Vorhaben anlegen. Person/Tag anklicken und ganzen Tag,
+4. Mit „+ Vorhaben“ Vorhaben anlegen. Person/Tag doppelt anklicken und ganzen Tag,
    erste oder zweite Arbeitshälfte zuweisen. Mehrere Tage/Personen und genaue
    Uhrzeiten sind über „+ Zuweisung“ möglich.
-5. In der gelben Zeile einen Tag anklicken, um Events/Hinweise einzutragen.
+5. Person/Tag auswählen, dann „Kommentar“, Rechtsklick oder Umschalt+F2 verwenden.
 6. „Daten speichern“ lädt eine JSON-Datei herunter. Außerhalb des Repo-Ordners
    aufbewahren. Wieder öffnen: Verwalten → Export & Drucken → JSON-Sicherung öffnen.
 
@@ -27,7 +27,13 @@ V01 usw. entsprechen der Vorhabenlegende. Ein durchgehendes Feld bedeutet volle
 Belegung beider Hälften; ein Punkt teilweise Belegung, … mehrere Vorhaben.
 Prozentplanung ist zeitlich flexibel und wird rechnerisch auf beide Hälften verteilt.
 Schwarz = abgegeben, Schraffur = Abwesenheit, roter Rand = Konflikt.
-Notizen stehen beim Ausdruck zusätzlich vollständig unter dem Plan.
+Kommentare sind je Person und Tag gespeichert, unabhängig von der Zuweisung.
+Eine violette Ecke markiert die Zelle, der Text erscheint beim Darüberfahren.
+Einfacher Klick wählt eine Zelle, Pfeiltasten bewegen die Auswahl, Doppelklick/Enter
+öffnet die Zuweisung. Rechtsklick/Umschalt+F2 öffnet den Kommentar.
+Kommentare stehen beim Ausdruck mit Name und Datum vollständig unter dem Plan.
+Alte allgemeine Tageshinweise bleiben erhalten; es erfolgt keine automatische
+Zuordnung dieser Hinweise zu Mitarbeitern.
 
 ## Datenschutz und Dateiserver
 
