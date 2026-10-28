@@ -19,3 +19,5 @@ assert.throws(()=>parse(Array.from({length:1001},(_,i)=>'Person '+i).join('\n'))
 r=parse('Name;Team\n"A ""Test""";B');assert.equal(r[0].person.name,'A "Test"');
 for(const m of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g))if(!m[1].includes('application/json'))new vm.Script(m[2]);
 console.log('PASS: CSV/TSV, BOM und sep=, Dezimalkomma, Umlaute, quoted Felder, Namenslisten, Vor-/Nachnamen, individuelle Wochenmodelle, Dopplungen, fehlerhafte Daten, Importlimit, vollständige JS-Syntax.');
+r=parse('Name;Anrede;Team;Wochenstunden;Beginn\nMustermann;Herr;Nord;40;08:00');assert.equal(r[0].person.salutation,'Herr');
+console.log('PASS: CSV-Anrede wird getrennt vom Namen übernommen.');
