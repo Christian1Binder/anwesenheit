@@ -7,7 +7,11 @@
 <meta name="referrer" content="no-referrer">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Personalplanung · Teamplan</title>
+<title>Teamplan · Personalplanung</title>
+<!-- Logo und Favicon sind eingebettet: keine Zusatzdatei und kein Netzwerk nötig.
+     Original: teamplan-logo.svg. Bei Änderungen SVG als Base64 in beide src/href übernehmen. -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiB2aWV3Qm94PSIwIDAgMTI4IDEyOCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsbGVkYnk9InRpdGxlIj48dGl0bGUgaWQ9InRpdGxlIj5UZWFtcGxhbiDigJMgTWVuc2NoZW4gdW5kIFBsYW51bmc8L3RpdGxlPjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiByeD0iMzAiIGZpbGw9IiMwODdmODAiLz48Y2lyY2xlIGN4PSIzMCIgY3k9IjM0IiByPSI4IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iMzAiIGN5PSI2NCIgcj0iOCIgZmlsbD0iI2ZmZiIvPjxjaXJjbGUgY3g9IjMwIiBjeT0iOTQiIHI9IjgiIGZpbGw9IiNmZmYiLz48cmVjdCB4PSI1MCIgeT0iMjYiIHdpZHRoPSI1NCIgaGVpZ2h0PSIxNiIgcng9IjgiIGZpbGw9IiNmZmYiLz48cmVjdCB4PSI1MCIgeT0iNTYiIHdpZHRoPSIzMCIgaGVpZ2h0PSIxNiIgcng9IjgiIGZpbGw9IiM4YmUwZDAiLz48cmVjdCB4PSI1MCIgeT0iODYiIHdpZHRoPSI1NCIgaGVpZ2h0PSIxNiIgcng9IjgiIGZpbGw9IiNmZmYiLz48cmVjdCB4PSI4OCIgeT0iNTYiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgcng9IjgiIGZpbGw9IiNmZmYiLz48L3N2Zz4=">
+<meta name="theme-color" content="#087f80">
 <!-- GESTALTUNG: Für Farben zuerst :root ändern. Die CSS-Klassen beschreiben Bausteine. -->
 <style>
 
@@ -677,6 +681,9 @@ body.board-meeting #boardStamp,body.board-meeting #boardFilters,body.board-meeti
 @media print{#dayNotePrint{display:block;font-size:8pt;white-space:pre-wrap}#dayNotePrint p{break-inside:avoid;margin:2mm 0}.mini-day{height:4mm}.mini-slot{font-size:6pt;line-height:4mm}.notes-row th{position:static!important}.board-table{min-width:0!important}.notes-row button{font-size:6pt!important}}
 
 .cell-tools{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:11px;color:#53677b}.cell-tools span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cell-tools button{padding:4px 9px;font-size:11px}.board-cell button.cell-selected{outline:2px solid #087f80;outline-offset:-2px}.comment-corner{position:absolute;right:1px;top:1px;width:0;height:0;border-top:6px solid #923ab0;border-left:6px solid transparent;z-index:4;pointer-events:none}#commentText{font:inherit;width:100%}@media print{.cell-tools{display:none!important}}
+
+/* Markenlogo: feste Maße verhindern ein Springen der Kopfzeile beim Laden. */
+header .brand img.logo{display:block;width:44px;height:44px;flex:0 0 44px;padding:0;border:0;border-radius:11px;background:transparent}
 </style>
 </head><body data-surface="board" data-print-kind="brief" data-preview="false">
 <!-- STARTDATEN: Für eigene Daten demo:false und eine eigene id setzen.
@@ -687,7 +694,7 @@ body.board-meeting #boardStamp,body.board-meeting #boardFilters,body.board-meeti
 </script>
 <!-- KOPFLEISTE: Texte dürfen geändert werden; die id-Werte werden vom Code verwendet. -->
 <header>
-  <div class="brand"><div class="logo">TP</div><div><h1>Teamplan</h1><small>Personal & Vorhaben · Stundenplanung</small></div></div>
+  <div class="brand"><img class="logo" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiB2aWV3Qm94PSIwIDAgMTI4IDEyOCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsbGVkYnk9InRpdGxlIj48dGl0bGUgaWQ9InRpdGxlIj5UZWFtcGxhbiDigJMgTWVuc2NoZW4gdW5kIFBsYW51bmc8L3RpdGxlPjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiByeD0iMzAiIGZpbGw9IiMwODdmODAiLz48Y2lyY2xlIGN4PSIzMCIgY3k9IjM0IiByPSI4IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iMzAiIGN5PSI2NCIgcj0iOCIgZmlsbD0iI2ZmZiIvPjxjaXJjbGUgY3g9IjMwIiBjeT0iOTQiIHI9IjgiIGZpbGw9IiNmZmYiLz48cmVjdCB4PSI1MCIgeT0iMjYiIHdpZHRoPSI1NCIgaGVpZ2h0PSIxNiIgcng9IjgiIGZpbGw9IiNmZmYiLz48cmVjdCB4PSI1MCIgeT0iNTYiIHdpZHRoPSIzMCIgaGVpZ2h0PSIxNiIgcng9IjgiIGZpbGw9IiM4YmUwZDAiLz48cmVjdCB4PSI1MCIgeT0iODYiIHdpZHRoPSI1NCIgaGVpZ2h0PSIxNiIgcng9IjgiIGZpbGw9IiNmZmYiLz48cmVjdCB4PSI4OCIgeT0iNTYiIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgcng9IjgiIGZpbGw9IiNmZmYiLz48L3N2Zz4=" width="44" height="44" alt="Teamplan Logo"><div><h1>Teamplan</h1><small>Personal & Vorhaben · Stundenplanung</small></div></div>
   <div class="head-actions"><button id="undo" disabled>↶ Rückgängig</button><button id="help">Hilfe</button><button id="adminMenu">Verwalten</button><button id="export">Export & Drucken</button><button id="saveHtml" class="primary">Daten speichern</button></div>
 </header>
 <main>
