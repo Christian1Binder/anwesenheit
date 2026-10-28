@@ -368,7 +368,7 @@ header{padding:16px;
 .meter i { display:block; height:4px; border-radius:3px; }
 .range-form { display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:20px; }
 .range-form label { display:grid; gap:4px; font-size:13px; }
-.schedule-grid { display:grid; grid-template-columns:45px 1fr 1fr; gap:8px; align-items:center; }
+.schedule-grid { display:grid; grid-template-columns:45px 1fr 1fr 1fr; gap:8px; align-items:center; }
 .weekdays { border:1px solid var(--line); border-radius:7px; display:flex; flex-wrap:wrap; gap:12px; padding:12px; }
 .weekdays label { white-space:nowrap; }
 .day-detail { border-bottom:1px solid var(--line); padding:12px 0; }
@@ -890,6 +890,10 @@ function validate(x) {
   }
   for(const p of x.people) {
     if(typeof p.name!=='string'||!p.name.trim()||typeof p.team!=='string'||!p.schedule||Array.isArray(p.schedule)) fail('Ungültige Person.');
+    if(p.daySchedule!==undefined){
+      if(!p.daySchedule||typeof p.daySchedule!=='object'||Array.isArray(p.daySchedule))fail('Ungültige Tagesarbeitszeiten.');
+      for(const [day,w]of Object.entries(p.daySchedule))if(!validDate(day)||(w!==null&&(!w||!validTime(w.start)||!Number.isFinite(w.hours)||w.hours<=0||timeMinutes(w.start)+w.hours*60>1440)))fail('Ungültige Tagesarbeitszeit.');
+    }
     const days=Object.entries(p.schedule);
     if(!days.length || days.some(([d,s])=>!/[0-6]/.test(d)||d.length!==1||!s||!validTime(s.start)||!Number.isFinite(s.hours)||s.hours<=0||timeMinutes(s.start)+s.hours*60>1440)) fail('Ungültiges Wochenmodell.');
   }
@@ -912,9 +916,18 @@ function validate(x) {
 /* Ein Einsatz erzeugt je nach Modus ein konkretes Zeitintervall oder freie
    Prozentstunden. Ohne individuellen Arbeitstag erzeugt nur clock einen Einsatz;
    dieser wird als außerhalb der Arbeitszeit gekennzeichnet (z.B. Samstag). */
+/* Arbeitszeit zentral auflösen: datierte Ausnahme vor Wochenmodell.
+   Beispiel: person.daySchedule={'2026-10-31':{start:'09:00',hours:5}}.
+   null bedeutet ausdrücklich arbeitsfrei; Löschen des Schlüssels stellt die
+   Regelwoche wieder her. Ende wird aus Beginn + Stunden berechnet, damit es
+   keine widersprüchlichen gespeicherten Uhrzeiten gibt. Keine Pausenautomatik.
+   Neue Berechnungen immer über workOnDay() anbinden, nie direkt an schedule. */
+function workOnDay(p,day){return Object.hasOwn(p.daySchedule||{},day)?p.daySchedule[day]:p.schedule[date(day).getUTCDay()]}
+function workLabel(p,day){const w=workOnDay(p,day);return w?w.start+'–'+clock(timeMinutes(w.start)+w.hours*60)+' · Feierabend '+clock(timeMinutes(w.start)+w.hours*60):'Arbeitsfrei'}
+function hoursUntil(start,end){if(!validTime(start)||!(validTime(end)||end==='24:00')||timeMinutes(end)<=timeMinutes(start))throw Error('Feierabend muss nach dem Beginn am selben Tag liegen.');return (timeMinutes(end)-timeMinutes(start))/60}
 function occurrence(a,p,day) {
   if(day<a.start||day>a.end||!a.days.includes(date(day).getUTCDay())) return null;
-  const work=p.schedule[date(day).getUTCDay()];
+  const work=workOnDay(p,day);
   if(a.mode==='clock') return {a,hours:(timeMinutes(a.timeEnd)-timeMinutes(a.timeStart))/60,from:timeMinutes(a.timeStart),to:timeMinutes(a.timeEnd)};
   if(!work) return null;
   const from=timeMinutes(work.start), length=work.hours*60;
@@ -927,7 +940,7 @@ function occurrence(a,p,day) {
 // Ein Tag ist die kleinste Kapazitätseinheit. Zeitintervalle sind halboffen:
 // 09:00–10:00 und 10:00–11:00 überschneiden sich somit ausdrücklich nicht.
 function dayStats(p,assignments,day,projects) {
-  const work=p.schedule[date(day).getUTCDay()], capacity=work?.hours||0;
+  const work=workOnDay(p,day), capacity=work?.hours||0;
   const entries=assignments.map(a=>occurrence(a,p,day)).filter(Boolean);
   const booked=entries.reduce((n,e)=>n+e.hours,0);
   const absence=entries.filter(e=>projects.find(p=>p.id===e.a.projectId)?.kind==='absence').reduce((n,e)=>n+e.hours,0);
@@ -1173,12 +1186,13 @@ function renderPlan(people) {
 function editPerson(id) {
   if(!requirePlanEdit())return;
   const p=db.people.find(p=>p.id===id)||{name:'',team:'',schedule:Object.fromEntries([1,2,3,4,5].map(d=>[d,{start:'08:00',hours:8}]))};
-  modal(`<h2>${id?'Person bearbeiten':'Person hinzufügen'}</h2><form id="personForm"><label class="field">Anrede<input name="salutation" maxlength="40" list="salutations" value="${esc(p.salutation||'')}" placeholder="z. B. Herr, Frau oder Dienstgrad"><datalist id="salutations"><option>Herr</option><option>Frau</option></datalist></label><label class="field">Name<input name="name" required maxlength="100" value="${esc(p.name)}"></label><label class="field">Team<input name="team" maxlength="100" value="${esc(p.team)}"></label><h3>Individuelle Arbeitswoche</h3><p class="help">Je Tag Beginn und Nettoarbeitsstunden. 0 Stunden = arbeitsfrei. Ein ganzer Tag belegt die vollständige individuelle Tagesarbeitszeit. Änderungen gelten auch für vergangene Auswertungen.</p><div class="schedule-grid"><b>Tag</b><b>Beginn</b><b>Stunden</b>${[1,2,3,4,5,6,0].map(d=>`<label for="hours${d}">${DAY_NAMES[d]}</label><input aria-label="${DAY_NAMES[d]} Beginn" type="time" name="start${d}" value="${p.schedule[d]?.start||'08:00'}" required><input id="hours${d}" name="hours${d}" type="number" min="0" max="24" step="0.25" value="${p.schedule[d]?.hours||0}" required>`).join('')}</div><p id="weekTotal" class="help"></p>${actions(id?'<button type="button" id="deletePerson" class="danger">Löschen</button>':'')}</form>`);
+  modal(`<h2>${id?'Person bearbeiten':'Person hinzufügen'}</h2><form id="personForm"><label class="field">Anrede<input name="salutation" maxlength="40" list="salutations" value="${esc(p.salutation||'')}" placeholder="z. B. Herr, Frau oder Dienstgrad"><datalist id="salutations"><option>Herr</option><option>Frau</option></datalist></label><label class="field">Name<input name="name" required maxlength="100" value="${esc(p.name)}"></label><label class="field">Team<input name="team" maxlength="100" value="${esc(p.team)}"></label><h3>Individuelle Arbeitswoche</h3><p class="help">Je Tag Beginn, Stunden oder Feierabend ändern. Beginn + Stunden = Feierabend, ohne automatischen Pausenabzug. 0 Stunden = arbeitsfrei. Samstag und Sonntag sind frei planbar. Einzelne Datums-Ausnahmen über die Tageszelle ändern. Ein ganzer Tag belegt die vollständige individuelle Tagesarbeitszeit. Änderungen gelten auch für vergangene Auswertungen.</p><div class="schedule-grid"><b>Tag</b><b>Beginn</b><b>Stunden</b><b>Feierabend</b>${[1,2,3,4,5,6,0].map(d=>`<label for="hours${d}">${DAY_NAMES[d]}</label><input aria-label="${DAY_NAMES[d]} Beginn" type="time" name="start${d}" value="${p.schedule[d]?.start||'08:00'}" required><input id="hours${d}" name="hours${d}" type="number" min="0" max="24" step="any" value="${p.schedule[d]?.hours||0}" required><input aria-label="${DAY_NAMES[d]} Feierabend" name="end${d}" type="text" inputmode="numeric" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]|24:00" placeholder="16:00" value="${p.schedule[d]?clock(timeMinutes(p.schedule[d].start)+p.schedule[d].hours*60):''}">`).join('')}</div><p id="weekTotal" class="help"></p>${actions(id?'<button type="button" id="deletePerson" class="danger">Löschen</button>':'')}</form>`);
   const total=()=>$('#weekTotal').textContent='Summe: '+number([0,1,2,3,4,5,6].reduce((n,d)=>n+Number($('#personForm').elements['hours'+d].value),0))+' h/Woche';
-  $('#personForm').oninput=total;total();
+  $('#personForm').oninput=e=>{const f=$('#personForm').elements,m=e.target.name?.match(/^(start|hours|end)([0-6])$/);if(m){const d=m[2];if(m[1]==='end'&&(validTime(f['end'+d].value)||f['end'+d].value==='24:00')){const h=(timeMinutes(f['end'+d].value)-timeMinutes(f['start'+d].value))/60;if(h>=0)f['hours'+d].value=h}else if(m[1]!=='end')f['end'+d].value=Number(f['hours'+d].value)>0?clock(timeMinutes(f['start'+d].value)+Number(f['hours'+d].value)*60):''}total()};total();
   $('#personForm').onsubmit=e=>{
     e.preventDefault();const f=new FormData(e.target),schedule={};
     for(let d=0;d<7;d++) if(Number(f.get('hours'+d))) schedule[d]={start:f.get('start'+d),hours:Number(f.get('hours'+d))};
+    for(let d=0;d<7;d++)if(schedule[d]&&Math.abs(timeMinutes(f.get('end'+d))-timeMinutes(schedule[d].start)-schedule[d].hours*60)>0.01){toast('Bitte Feierabend und Stunden prüfen.');return}
     const item={...p,id:id||uid(),name:f.get('name').trim(),salutation:f.get('salutation').trim(),team:f.get('team').trim(),schedule};
     try { commit(x=>{if(id)x.people[x.people.findIndex(p=>p.id===id)]=item;else x.people.push(item)});close(); }
     catch(err){toast(err.message)}
@@ -1295,6 +1309,7 @@ function saveHtml() {
 function exportCSV(kind) {
   const range=currentRange(),people=filteredPeople();let rows;
   if(kind==='overview') rows=[['Von','Bis','Anrede','Person','Team','Sollstunden','Vorhaben (h)','Abwesenheit (h)','Abgegeben (h)','Gebunden (h)','Frei (h)','Konflikttage','Vorhaben mit Stunden'],...people.map(p=>{const s=reportCache.get(p.id);return [range.start,range.end,p.salutation||'',p.name,p.team,s.capacity,s.project,s.absence,s.detached,s.booked,s.free,s.conflicts.length,Object.entries(s.byProject).map(([id,h])=>db.projects.find(pr=>pr.id===id).name+': '+number(h)+' h').join(' | ')]})];
+  else if(kind==='hours'){rows=[['Anrede','Person','Team','Datum','Beginn','Feierabend','Stunden','Quelle']];for(const p of people)for(const d of reportCache.get(p.id).days){const w=workOnDay(p,d.day);rows.push([p.salutation||'',p.name,p.team,d.day,w?.start||'',w?clock(timeMinutes(w.start)+w.hours*60):'',w?.hours||0,Object.hasOwn(p.daySchedule||{},d.day)?'Tagesausnahme':'Wochenmodell'])}}
   else if(kind==='matrix') {const bs=buckets();rows=[['Anrede','Person','Team',...bs.map(b=>b.start+' bis '+b.end)],...people.map(p=>[p.salutation||'',p.name,p.team,...bs.map(b=>{const s=summarize(p,db.assignments,b,db.projects);return Object.entries(s.byProject).map(([id,h])=>db.projects.find(pr=>pr.id===id).name+': '+number(h)+' h').join(' | ')})])];}
   else {
     // Eine Zeile je tatsächlichem Tages-Einsatz vermeidet Mehrdeutigkeit bei Serien.
@@ -1307,7 +1322,7 @@ function exportCSV(kind) {
   download(csvText(rows),'Personalplanung_'+kind+'_'+range.start+'.csv','text/csv;charset=utf-8');toast('CSV exportiert.');
 }
 function exportDialog() {
-  modal(`<h2>Export & Drucken</h2><p class="help">Die aktuelle Ansicht, der Zeitraum und die Personenfilter werden übernommen. Der Vorhabenfilter wählt Personen aus; deren weitere Einsätze bleiben für eine vollständige Kapazitätsübersicht erhalten.</p><div class="aside-actions"><button id="printPlan">${surface==='board'?'Personaltafel · A3 quer':surface==='projects'?'Vorhaben & Bedarf · A3 quer':surface==='report'?'Gewählten Bericht · A4 quer':'Planungsmatrix · A3 quer'} drucken / PDF</button><button data-csv="overview">Excel-CSV · Besprechungsübersicht</button><button data-csv="daily">Excel-CSV · Tages-Einsätze mit Uhrzeiten</button>${surface==='plan'?'<button data-csv="matrix">Excel-CSV · Planungsmatrix</button>':''}<button id="backup">Vollständige JSON-Sicherung</button><button id="restore">JSON-Sicherung öffnen (auch Version 1)</button></div><p class="help">CSV-Dateien können direkt in Excel geöffnet werden. Für Papier den Druckbericht verwenden: kompakte Zusammenfassung oder vollständige Personenübersicht. Papiergröße und Skalierung lassen sich im Druckdialog anpassen.</p><div class="dialog-actions"><button data-close>Schließen</button></div>`);
+  modal(`<h2>Export & Drucken</h2><p class="help">Die aktuelle Ansicht, der Zeitraum und die Personenfilter werden übernommen. Der Vorhabenfilter wählt Personen aus; deren weitere Einsätze bleiben für eine vollständige Kapazitätsübersicht erhalten.</p><div class="aside-actions"><button id="printPlan">${surface==='board'?'Personaltafel · A3 quer':surface==='projects'?'Vorhaben & Bedarf · A3 quer':surface==='report'?'Gewählten Bericht · A4 quer':'Planungsmatrix · A3 quer'} drucken / PDF</button><button data-csv="overview">Excel-CSV · Besprechungsübersicht</button><button data-csv="hours">Excel-CSV · Arbeitszeiten / Feierabend je Tag</button><button data-csv="daily">Excel-CSV · Tages-Einsätze mit Uhrzeiten</button>${surface==='plan'?'<button data-csv="matrix">Excel-CSV · Planungsmatrix</button>':''}<button id="backup">Vollständige JSON-Sicherung</button><button id="restore">JSON-Sicherung öffnen (auch Version 1)</button></div><p class="help">CSV-Dateien können direkt in Excel geöffnet werden. Für Papier den Druckbericht verwenden: kompakte Zusammenfassung oder vollständige Personenübersicht. Papiergröße und Skalierung lassen sich im Druckdialog anpassen.</p><div class="dialog-actions"><button data-close>Schließen</button></div>`);
 }
 // SHARED JS START
 /* ============================================================================
@@ -1655,7 +1670,7 @@ function decisionPreview(r,data=db){
   const after=summarize(p,afterAssignments,r,[...data.projects,project]);
   const team=data.people.filter(q=>p.team?q.team===p.team:true),days=[];
   for(let day=r.start;day<=r.end;day=add(day,1)){
-    if(!r.days.includes(date(day).getUTCDay())||!p.schedule[date(day).getUTCDay()])continue;
+    if(!r.days.includes(date(day).getUTCDay())||!workOnDay(p,day))continue;
     let free=0,persons=0;for(const q of team){const d=dayStats(q,afterAssignments.filter(a=>a.personId===q.id),day,[...data.projects,project]);free+=d.free;if(d.free>0.001&&!d.conflict)persons++}
     days.push({day,free,persons});
   }
@@ -1865,7 +1880,7 @@ function boardBuckets(){
 function boardSlice(p,b,assignments=db.assignments){
   const s=summarize(p,assignments,b,db.projects);
   if(b.half===undefined)return s;
-  const w=p.schedule[date(b.start).getUTCDay()];
+  const w=workOnDay(p,b.start);
   const from=w?timeMinutes(w.start)+b.half*w.hours*30: b.half*720;
   const to=w?from+w.hours*30:from+720;
   const entries=s.days[0].entries.map(e=>({...e,hours:e.from===null?e.hours/2:Math.max(0,Math.min(to,e.to)-Math.max(from,e.from))/60})).filter(e=>e.hours>0);
@@ -1893,7 +1908,7 @@ function renderBoard(people,range){
     const s=boardSlice(p,b),projects=Object.entries(s.byProject),denom=Math.max(s.capacity,s.booked,0.001);
     const requested=pending.some(r=>r.personId===p.id&&intersects(r,b)&&boardSlice(p,b,[requestAssignment(r)]).booked>0);
     const details=projects.map(([id,h])=>{const pr=db.projects.find(q=>q.id===id);return boardCode(pr)+' '+pr.name+': '+number(h)+' h'});
-    const title=[personDisplayName(p),fullDate(b.start)+(b.end!==b.start?' – '+fullDate(b.end):'')+(b.half!==undefined?' · '+b.sub:''),...details,number(s.free)+' h frei',s.conflicts.length?'! Tageskonflikt: Details prüfen':'',requested?'Urlaub beantragt, noch nicht abgezogen':''].filter(Boolean).join('\n');
+    const title=[personDisplayName(p),fullDate(b.start)+(b.end!==b.start?' – '+fullDate(b.end):'')+(b.half!==undefined?' · '+b.sub:''),...(b.start===b.end?[workLabel(p,b.start)]:[]),...details,number(s.free)+' h frei',s.conflicts.length?'! Tageskonflikt: Details prüfen':'',requested?'Urlaub beantragt, noch nicht abgezogen':''].filter(Boolean).join('\n');
     const segments=projects.map(([id,h])=>{const pr=db.projects.find(q=>q.id===id),label=boardCode(pr);return `<span class="board-seg ${pr.kind}" style="flex:${h/denom};--project:${pr.color}">${esc(label)}</span>`}).join('');
     const freeSeg=s.free>0?`<span class="board-seg free" style="flex:${s.free/denom}">${view==='week'?number(s.free)+' h frei':''}</span>`:'';
     const note=view==='week'?projects.map(([id])=>{const pr=db.projects.find(q=>q.id===id);return pr.name}).join(' / ')+(s.entries?.length?' · '+s.entries.map(e=>e.from===null?'flex.':clock(e.from)+'–'+clock(e.to)).join(', '):''):'';
@@ -1926,7 +1941,7 @@ document.addEventListener('click',e=>{
 const IMPORT_DAYS=['So','Mo','Di','Mi','Do','Fr','Sa'];
 const importKey=s=>String(s).trim().toLocaleLowerCase('de').replace(/[\s_\-().]/g,'');
 const IMPORT_ALIASES={anrede:'salutation',dienstgrad:'salutation',salutation:'salutation',name:'name',person:'name',mitarbeiter:'name',vorname:'first',nachname:'last',team:'team',gruppe:'team',wochenstunden:'weekly',stundenwoche:'weekly',beginn:'start',arbeitsbeginn:'start'};
-for(let d=0;d<7;d++){IMPORT_ALIASES[importKey(IMPORT_DAYS[d])]='h'+d;IMPORT_ALIASES[importKey(IMPORT_DAYS[d]+' Stunden')]='h'+d;IMPORT_ALIASES[importKey(IMPORT_DAYS[d]+' Beginn')]='s'+d}
+for(let d=0;d<7;d++){IMPORT_ALIASES[importKey(IMPORT_DAYS[d])]='h'+d;IMPORT_ALIASES[importKey(IMPORT_DAYS[d]+' Stunden')]='h'+d;IMPORT_ALIASES[importKey(IMPORT_DAYS[d]+' Beginn')]='s'+d;IMPORT_ALIASES[importKey(IMPORT_DAYS[d]+' Feierabend')]='e'+d;IMPORT_ALIASES[importKey(IMPORT_DAYS[d]+' Ende')]='e'+d}
 function parsePeopleCSV(input){
   if(input.length>1000000)throw Error('Bitte höchstens 1 Million Zeichen bzw. 1000 Personen auf einmal importieren.');
   let text=input.replace(/^\uFEFF/,'');let delimiter;
@@ -1964,9 +1979,10 @@ function buildPeopleImport(text,options,existing){
       if(!name||name.length>100||/[\r\n]/.test(name))throw Error('Name fehlt, ist mehrzeilig oder länger als 100 Zeichen.');
       if(team.length>100||/[\r\n]/.test(team))throw Error('Team ist mehrzeilig oder länger als 100 Zeichen.');
       const start=importTime(fields.start||options.start),schedule={};
-      const daily=keys.some(k=>/^h[0-6]$/.test(k));
+      const daily=keys.some(k=>/^[he][0-6]$/.test(k));
       if(!daily){const weekly=importNumber(fields.weekly||options.weekly,'Wochenstunden');if(weekly<=0||weekly>120)throw Error('Wochenstunden müssen für Mo–Fr über 0 und höchstens 120 sein.');for(const d of [1,2,3,4,5])schedule[d]={start:fields['s'+d]?importTime(fields['s'+d]):start,hours:weekly/5}}
       else for(let d=0;d<7;d++){const h=fields['h'+d]?importNumber(fields['h'+d],IMPORT_DAYS[d]+' Stunden'):0;if(h>0)schedule[d]={start:fields['s'+d]?importTime(fields['s'+d]):start,hours:h}}
+      for(let d=0;d<7;d++)if(fields['e'+d]){const begin=fields['s'+d]?importTime(fields['s'+d]):start,end=fields['e'+d]==='24:00'?'24:00':importTime(fields['e'+d]),h=hoursUntil(begin,end);if(fields['h'+d]&&Math.abs(importNumber(fields['h'+d],'Stunden')-h)>0.001)throw Error(IMPORT_DAYS[d]+': Stunden und Feierabend passen nicht zusammen.');schedule[d]={start:begin,hours:h}}
       const hours=Object.values(schedule).reduce((n,s)=>n+s.hours,0);
       if(!hours)throw Error('Mindestens ein Arbeitstag muss Stunden enthalten.');
       if(daily&&fields.weekly&&Math.abs(importNumber(fields.weekly,'Wochenstunden')-hours)>0.001)throw Error('Tagesstunden ergeben '+number(hours)+' h und passen nicht zu den Wochenstunden.');
@@ -1978,12 +1994,12 @@ function buildPeopleImport(text,options,existing){
   });
 }
 function peopleImportTemplate(detailed=false){
-  const rows=detailed?[['Anrede','Name','Team','Beginn','Mo','Di','Mi','Do','Fr','Sa','So','Mo_Beginn','Di_Beginn','Mi_Beginn','Do_Beginn','Fr_Beginn','Sa_Beginn','So_Beginn'],['Frau','Erika Muster','Team Nord','08:00',8,8,8,8,6,0,0,'','','','','','','']]:[['Anrede','Name','Team','Wochenstunden','Beginn'],['Frau','Erika Muster','Team Nord',30,'08:00'],['Herr','Alex Beispiel','Team Süd',20,'09:00']];
+  const rows=detailed?[['Anrede','Name','Team','Beginn','Mo','Di','Mi','Do','Fr','Sa','So','Mo_Beginn','Di_Beginn','Mi_Beginn','Do_Beginn','Fr_Beginn','Sa_Beginn','So_Beginn','Mo_Feierabend','Di_Feierabend','Mi_Feierabend','Do_Feierabend','Fr_Feierabend','Sa_Feierabend','So_Feierabend'],['Frau','Erika Muster','Team Nord','08:00',8,8,8,8,6,0,0,'','','','','','','','16:00','16:00','16:00','16:00','14:00','','']]:[['Anrede','Name','Team','Wochenstunden','Beginn'],['Frau','Erika Muster','Team Nord',30,'08:00'],['Herr','Alex Beispiel','Team Süd',20,'09:00']];
   download(csvText(rows),detailed?'Personalimport_Wochenmodell.csv':'Personalimport_Vorlage.csv','text/csv;charset=utf-8');
 }
 function openPeopleImport(){
   if(!requirePlanEdit())return;
-  modal(`<h2>Personal gesammelt hinzufügen</h2><p>Excel-Zellen kopieren und hier einfügen – oder eine CSV-Datei öffnen. Bestehende Personen und Einsätze werden nicht verändert.</p><div class="import-filebar"><label class="field">CSV-Datei auswählen<input id="peopleCSV" type="file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values"></label><button type="button" id="simpleTemplate">Einfache CSV-Vorlage</button><button type="button" id="dailyTemplate">Vorlage mit Wochenmodell</button></div><p id="importFileNote" class="help"></p><label class="field">Personenliste<textarea id="peoplePaste" rows="7" spellcheck="false" placeholder="Anrede;Name;Team;Wochenstunden;Beginn&#10;Frau;Erika Muster;Team Nord;30;08:00&#10;Herr;Alex Beispiel;Team Süd;20;09:00"></textarea></label><p class="help">Mit Kopfzeile: Anrede;Name;Team;Wochenstunden;Beginn (Reihenfolge frei). Ohne Kopfzeile bleibt aus Kompatibilitätsgründen: Name, Team, Wochenstunden, Beginn. Ein Name pro Zeile genügt; fehlende Werte kommen aus den Vorgaben. Trennzeichen: Semikolon, Komma oder Excel-Tabulator. Tagesstunden in Mo–So ersetzen die gleichmäßige Verteilung auf Mo–Fr. Ein ganzer Arbeitstag entspricht den jeweiligen Tagesstunden. Eine leere Anrede-Spalte bleibt leer; ohne diese Spalte gilt die Vorgabe.</p><details><summary>Vorgaben für fehlende Angaben</summary><div class="import-defaults"><label class="field">Anrede bei fehlender Spalte<input id="importSalutation" maxlength="40" placeholder="Optional, z. B. Herr oder Dienstgrad"></label><label class="field">Team<input id="importTeam" maxlength="100" placeholder="Optional"></label><label class="field">Wochenstunden<input id="importHours" type="number" value="40" min="0.25" max="120" step="0.25"></label><label class="field">Arbeitsbeginn<input id="importStart" type="time" value="08:00"></label><label class="field">Kopfzeile<select id="importHeader"><option value="auto">Automatisch erkennen</option><option value="yes">Erste Zeile enthält Spaltennamen</option><option value="no">Keine Kopfzeile</option></select></label></div></details>${db.demo?'<p class="pending-note">Du arbeitest mit Beispieldaten. Der Import ergänzt diese. Für einen leeren produktiven Plan zuerst „Eigene Planung starten“ oder einen leeren gemeinsamen Ordner einrichten.</p>':''}<div class="dialog-actions"><button type="button" id="checkPeople" class="primary">Vorschau prüfen</button></div><p id="peopleImportError" class="form-error" role="alert"></p><div id="peopleImportPreview"></div><p class="help">${shared.dir?'Die Übernahme ändert zunächst deinen Arbeitsstand. Anschließend „Gemeinsam speichern“ wählen.':'Nach der Übernahme den Stand über „Daten speichern“ oder als JSON sichern.'} Ein Import ist als einzelne Änderung rückgängig machbar, solange der Rückgängig-Verlauf verfügbar ist.</p><div class="dialog-actions"><button type="button" data-close>Abbrechen</button><button id="applyPeople" class="primary" disabled>Personen übernehmen</button></div>`);
+  modal(`<h2>Personal gesammelt hinzufügen</h2><p>Excel-Zellen kopieren und hier einfügen – oder eine CSV-Datei öffnen. Bestehende Personen und Einsätze werden nicht verändert.</p><div class="import-filebar"><label class="field">CSV-Datei auswählen<input id="peopleCSV" type="file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values"></label><button type="button" id="simpleTemplate">Einfache CSV-Vorlage</button><button type="button" id="dailyTemplate">Vorlage mit Wochenmodell</button></div><p id="importFileNote" class="help"></p><label class="field">Personenliste<textarea id="peoplePaste" rows="7" spellcheck="false" placeholder="Anrede;Name;Team;Wochenstunden;Beginn&#10;Frau;Erika Muster;Team Nord;30;08:00&#10;Herr;Alex Beispiel;Team Süd;20;09:00"></textarea></label><p class="help">Mit Kopfzeile: Anrede;Name;Team;Wochenstunden;Beginn (Reihenfolge frei). Ohne Kopfzeile bleibt aus Kompatibilitätsgründen: Name, Team, Wochenstunden, Beginn. Ein Name pro Zeile genügt; fehlende Werte kommen aus den Vorgaben. Trennzeichen: Semikolon, Komma oder Excel-Tabulator. Mo_Feierabend bis So_Feierabend erlauben Endzeiten (z. B. 16:00), alternativ zu Tagesstunden; bei beiden Angaben müssen sie übereinstimmen. Tagesstunden in Mo–So ersetzen die gleichmäßige Verteilung auf Mo–Fr. Ein ganzer Arbeitstag entspricht den jeweiligen Tagesstunden. Eine leere Anrede-Spalte bleibt leer; ohne diese Spalte gilt die Vorgabe.</p><details><summary>Vorgaben für fehlende Angaben</summary><div class="import-defaults"><label class="field">Anrede bei fehlender Spalte<input id="importSalutation" maxlength="40" placeholder="Optional, z. B. Herr oder Dienstgrad"></label><label class="field">Team<input id="importTeam" maxlength="100" placeholder="Optional"></label><label class="field">Wochenstunden<input id="importHours" type="number" value="40" min="0.25" max="120" step="0.25"></label><label class="field">Arbeitsbeginn<input id="importStart" type="time" value="08:00"></label><label class="field">Kopfzeile<select id="importHeader"><option value="auto">Automatisch erkennen</option><option value="yes">Erste Zeile enthält Spaltennamen</option><option value="no">Keine Kopfzeile</option></select></label></div></details>${db.demo?'<p class="pending-note">Du arbeitest mit Beispieldaten. Der Import ergänzt diese. Für einen leeren produktiven Plan zuerst „Eigene Planung starten“ oder einen leeren gemeinsamen Ordner einrichten.</p>':''}<div class="dialog-actions"><button type="button" id="checkPeople" class="primary">Vorschau prüfen</button></div><p id="peopleImportError" class="form-error" role="alert"></p><div id="peopleImportPreview"></div><p class="help">${shared.dir?'Die Übernahme ändert zunächst deinen Arbeitsstand. Anschließend „Gemeinsam speichern“ wählen.':'Nach der Übernahme den Stand über „Daten speichern“ oder als JSON sichern.'} Ein Import ist als einzelne Änderung rückgängig machbar, solange der Rückgängig-Verlauf verfügbar ist.</p><div class="dialog-actions"><button type="button" data-close>Abbrechen</button><button id="applyPeople" class="primary" disabled>Personen übernehmen</button></div>`);
   $('#modal').classList.add('wide');let preview=null,basePeople='',readVersion=0;
   const invalidate=()=>{preview=null;$('#applyPeople').disabled=true;$('#peopleImportPreview').innerHTML='';$('#peopleImportError').textContent=''};
   for(const id of ['peoplePaste','importSalutation','importTeam','importHours','importStart','importHeader'])$('#'+id).addEventListener('input',()=>{readVersion++;invalidate()});
@@ -1994,7 +2010,7 @@ function openPeopleImport(){
     invalidate();try{
       preview=buildPeopleImport($('#peoplePaste').value,{salutation:$('#importSalutation').value,team:$('#importTeam').value,weekly:$('#importHours').value,start:$('#importStart').value,header:$('#importHeader').value},db.people);basePeople=JSON.stringify(db.people);
       const errors=preview.filter(r=>r.error).length,duplicates=preview.filter(r=>r.duplicate).length;
-      $('#peopleImportPreview').innerHTML=`<h3>Vorschau · ${preview.length} Datensätze</h3><p>${errors} Fehler · ${duplicates} mögliche Dopplungen. ${errors?'Bitte Fehler in der Liste korrigieren und die Vorschau erneut prüfen.':'Gleiche Namen sind vorsorglich abgewählt. Bei tatsächlich unterschiedlichen Personen gezielt anhaken.'}</p><div class="import-preview-scroll"><table class="import-preview"><thead><tr><th>Übernehmen</th><th>Datensatz</th><th>Anrede</th><th>Name / Team</th><th>Wochenmodell</th><th>Prüfung</th></tr></thead><tbody>${preview.map((r,i)=>`<tr><td><input type="checkbox" data-import-row="${i}" aria-label="Datensatz ${r.row} übernehmen" ${r.error?'disabled':r.duplicate?'':'checked'}></td><td>${r.row}</td><td>${esc(r.person?.salutation||'–')}</td><td>${esc(r.person?.name||r.label)}<br><small>${esc(r.person?.team||'')}</small></td><td>${r.person?Object.entries(r.person.schedule).sort((a,b)=>(+a[0]+6)%7-(+b[0]+6)%7).map(([d,w])=>IMPORT_DAYS[d]+' '+w.start+' · '+number(w.hours)+' h').join('<br>'):''}</td><td>${esc(r.error||(r.duplicate?'Name bereits vorhanden oder mehrfach in der Liste – nur bei anderer Person anhaken.':'Neu · '+number(weeklyHours(r.person))+' h/Woche'))}</td></tr>`).join('')}</tbody></table></div>`;
+      $('#peopleImportPreview').innerHTML=`<h3>Vorschau · ${preview.length} Datensätze</h3><p>${errors} Fehler · ${duplicates} mögliche Dopplungen. ${errors?'Bitte Fehler in der Liste korrigieren und die Vorschau erneut prüfen.':'Gleiche Namen sind vorsorglich abgewählt. Bei tatsächlich unterschiedlichen Personen gezielt anhaken.'}</p><div class="import-preview-scroll"><table class="import-preview"><thead><tr><th>Übernehmen</th><th>Datensatz</th><th>Anrede</th><th>Name / Team</th><th>Wochenmodell</th><th>Prüfung</th></tr></thead><tbody>${preview.map((r,i)=>`<tr><td><input type="checkbox" data-import-row="${i}" aria-label="Datensatz ${r.row} übernehmen" ${r.error?'disabled':r.duplicate?'':'checked'}></td><td>${r.row}</td><td>${esc(r.person?.salutation||'–')}</td><td>${esc(r.person?.name||r.label)}<br><small>${esc(r.person?.team||'')}</small></td><td>${r.person?Object.entries(r.person.schedule).sort((a,b)=>(+a[0]+6)%7-(+b[0]+6)%7).map(([d,w])=>IMPORT_DAYS[d]+' '+w.start+'–'+clock(timeMinutes(w.start)+w.hours*60)+' · '+number(w.hours)+' h').join('<br>'):''}</td><td>${esc(r.error||(r.duplicate?'Name bereits vorhanden oder mehrfach in der Liste – nur bei anderer Person anhaken.':'Neu · '+number(weeklyHours(r.person))+' h/Woche'))}</td></tr>`).join('')}</tbody></table></div>`;
       document.querySelectorAll('[data-import-row]').forEach(el=>el.onchange=updateButton);updateButton();
     }catch(err){$('#peopleImportError').textContent=err.message;preview=null}
   };
@@ -2130,17 +2146,35 @@ function compactCellBody(p,b,s,fallback){
  const legacy=s.days.some(d=>d.entries.some(e=>e.a.mode!=='full'));
  return '<span class="mini-day"><span class="mini-slot '+(pr?.kind||'free')+'" style="--project:'+(pr?.color||'#edf6f2')+'">'+(ids.length>1?'…':pr?esc(boardCode(pr)):'')+(legacy?'*':'')+'</span></span>';
 }
+function editDayTime(personId,day){
+ if(!requirePlanEdit())return;const p=db.people.find(p=>p.id===personId),w=workOnDay(p,day),custom=Object.hasOwn(p.daySchedule||{},day);
+ modal('<h2>Arbeitszeit / Feierabend</h2><p>'+esc(personDisplayName(p))+' · '+fullDate(day)+'</p><form id="dayTimeForm"><label class="field">Tag<select id="dayWork"><option value="work">Arbeitstag (auch Samstag / Sonntag)</option><option value="off" '+(!w?'selected':'')+'>Arbeitsfrei</option></select></label><div class="row"><label class="field">Beginn<input id="dayStart" type="time" value="'+(w?.start||'08:00')+'" required></label><label class="field">Feierabend<input id="dayEnd" type="text" inputmode="numeric" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]|24:00" value="'+(w?clock(timeMinutes(w.start)+w.hours*60):'16:00')+'" required></label></div><p class="help">Gilt nur für diese Person an diesem Datum. Beginn bis Feierabend zählt als Arbeitszeit, ohne automatischen Pausenabzug. Ganztagseinsätze passen sich an. Genehmigter Urlaub ist geschützt; bestehende Einsätze dürfen nicht durch „arbeitsfrei“ verschwinden.</p><p id="dayTimeError" class="form-error"></p><div class="dialog-actions"><button type="button" data-close>Abbrechen</button>'+(custom?'<button type="button" id="resetDayTime">Wochenmodell verwenden</button>':'')+'<button class="primary">Speichern</button></div></form>');
+ const save=reset=>{try{const value=reset||$('#dayWork').value==='off'?null:{start:$('#dayStart').value,hours:hoursUntil($('#dayStart').value,$('#dayEnd').value)};commit(x=>setDayTime(x,personId,day,value,reset));close()}catch(e){$('#dayTimeError').textContent=e.message}};
+ $('#dayTimeForm').onsubmit=e=>{e.preventDefault();save(false)};if(custom)$('#resetDayTime').onclick=()=>save(true);
+}
+// Mutation ausschließlich innerhalb commit(): gemeinsam prüfbar und rückgängig.
+function setDayTime(data,personId,day,value,reset=false){
+ const p=data.people.find(p=>p.id===personId);if(!p||!validDate(day))throw Error('Person oder Datum ungültig.');
+ const assignments=data.assignments.filter(a=>a.personId===personId),entries=dayStats(p,assignments,day,data.projects).entries;
+ if(assignments.some(a=>a.requestId&&day>=a.start&&day<=a.end&&a.days.includes(date(day).getUTCDay())))throw Error('Für diesen Tag besteht genehmigter Urlaub. Zuerst den Antrag klären.');
+ const next={...p,daySchedule:{...p.daySchedule}};if(reset)delete next.daySchedule[day];else next.daySchedule[day]=value;
+ const after=dayStats(next,assignments,day,data.projects);
+ if(entries.length&&!workOnDay(next,day))throw Error('Zuerst die bestehenden Einsätze verschieben oder entfernen.');
+ if(after.conflict)throw Error('Diese Arbeitszeit kollidiert mit bestehenden Einsätzen.');
+ p.daySchedule=next.daySchedule;
+}
 function quickDay(personId,b){
  if(b.start!==b.end||!canEditPlan()){personDetail(personId,b);return}
  const p=db.people.find(x=>x.id===personId),stats=dayStats(p,db.assignments.filter(a=>a.personId===personId),b.start,db.projects);
- modal('<h2>'+esc(personDisplayName(p))+' · '+fmt(b.start)+'</h2><p>'+stats.entries.map(e=>esc(db.projects.find(p=>p.id===e.a.projectId).name)+' ('+(e.from===null?'flexibel':clock(e.from)+'–'+clock(e.to))+')').join(' · ')+'</p><label class="field">Vorhaben<select id="quickProject">'+db.projects.filter(p=>!p.system).map(p=>'<option value="'+esc(p.id)+'">'+esc(personDisplayName(p))+'</option>').join('')+'</select></label><div class="quick-options"><button data-quick-mode="full">Ganzer Tag</button></div><p id="quickError" class="form-error"></p><p class="help">Ein Klick weist das gewählte Vorhaben zu. Bestehende Einsätze werden nicht ersetzt. Für mehrere Tage oder Personen „Details“ öffnen.</p><div class="dialog-actions"><button data-close>Schließen</button><button id="quickDetails">Details / bearbeiten</button></div>');
+ modal('<h2>'+esc(personDisplayName(p))+' · '+fmt(b.start)+'</h2><p>'+esc(workLabel(p,b.start))+'</p><p>'+stats.entries.map(e=>esc(db.projects.find(p=>p.id===e.a.projectId).name)+' ('+(e.from===null?'flexibel':clock(e.from)+'–'+clock(e.to))+')').join(' · ')+'</p><label class="field">Vorhaben<select id="quickProject">'+db.projects.filter(p=>!p.system).map(p=>'<option value="'+esc(p.id)+'">'+esc(personDisplayName(p))+'</option>').join('')+'</select></label><div class="quick-options"><button data-quick-mode="full">Ganzer Tag</button></div><p id="quickError" class="form-error"></p><p class="help">Ein Klick weist das gewählte Vorhaben zu. Bestehende Einsätze werden nicht ersetzt. Für mehrere Tage oder Personen „Details“ öffnen.</p><div class="dialog-actions"><button data-close>Schließen</button><button id="quickTime">Arbeitszeit / Feierabend</button><button id="quickDetails">Details / bearbeiten</button></div>');
+ $('#quickTime').onclick=()=>editDayTime(personId,b.start);
  $('#quickDetails').onclick=()=>personDetail(personId,b);
  document.querySelectorAll('[data-quick-mode]').forEach(btn=>btn.onclick=()=>{try{const a=makeQuickAssignment(db,personId,$('#quickProject').value,b.start,btn.dataset.quickMode);commit(x=>x.assignments.push(a));close()}catch(e){$('#quickError').textContent=e.message}});
 }
 function makeQuickAssignment(data,personId,projectId,day,mode){
  const p=data.people.find(x=>x.id===personId);if(!p||!data.projects.some(x=>x.id===projectId&&!x.system)||!validDate(day)||mode!=='full')throw Error('Bitte Person, Vorhaben und Tag prüfen.');
  const a={id:uid(),personId,projectId,start:day,end:day,days:[date(day).getUTCDay()],mode,timeStart:'08:00',timeEnd:'16:00',load:100,note:''};
- if(!occurrence(a,p,day))throw Error('Für diesen Tag ist keine Arbeitszeit hinterlegt.');
+ if(!occurrence(a,p,day))throw Error('Arbeitsfreier Tag: Zelle doppelklicken → Arbeitszeit / Feierabend festlegen, dann Vorhaben zuweisen.');
  const assignments=data.assignments.filter(x=>x.personId===personId);
  if(dayStats(p,[...assignments,a],day,data.projects).conflict)throw Error('Diese Zuweisung überschneidet sich oder überlastet den Tag. Bestehende Einsätze unter Details bearbeiten.');
  return a;
@@ -2169,7 +2203,7 @@ function selectBoardCell(button){
  document.querySelectorAll('.cell-selected').forEach(el=>el.classList.remove('cell-selected'));
  button.classList.add('cell-selected');
  const b=boardBuckets()[selectedBoardCell.index],p=db.people.find(p=>p.id===selectedBoardCell.personId);
- $('#selectedCellLabel').textContent=personDisplayName(p)+' · '+fullDate(b.start)+(b.end!==b.start?' – '+fullDate(b.end):'')+cellNoteTooltip(p.id,b);
+ $('#selectedCellLabel').textContent=personDisplayName(p)+' · '+fullDate(b.start)+(b.end!==b.start?' – '+fullDate(b.end):' · '+workLabel(p,b.start))+cellNoteTooltip(p.id,b);
 }
 function selectedRange(){if(!selectedBoardCell)return null;const b=boardBuckets()[selectedBoardCell.index];return b&&db.people.some(p=>p.id===selectedBoardCell.personId)?b:null}
 function editCellComment(personId,b){
@@ -2220,7 +2254,7 @@ function buildBoardFill(data,id,sourceDay,targetDay,personId){
  if(date(end)-date(start)>366*86400000)throw Error('Höchstens ein Jahr auf einmal ausfüllen.');
  const items=[];let skipped=0;
  for(let day=start;day<=end;day=add(day,1)){
-  if(!p.schedule[date(day).getUTCDay()]){skipped++;continue}
+  if(!workOnDay(p,day)){skipped++;continue}
   const current=data.assignments.filter(x=>x.personId===personId),stats=dayStats(p,current,day,data.projects);
   if(stats.conflict)throw Error(fullDate(day)+': bestehender Konflikt. Nichts übernommen.');
   if(stats.entries.some(e=>e.a.projectId===a.projectId&&e.a.mode==='full'))continue;
@@ -2271,7 +2305,7 @@ function buildRectangleFill(data,id,sourceDay,targetDay,targetPerson,visibleIds)
  if(ids.length*((date(end)-date(start))/86400000+1)>10000)throw Error('Bitte höchstens 10.000 Zellen auf einmal ausfüllen.');
  for(const personId of ids){const p=data.people.find(x=>x.id===personId);if(!p)throw Error('Person nicht mehr vorhanden.');
  for(let day=start;day<=end;day=add(day,1)){
- if(!p.schedule[date(day).getUTCDay()]){skipped++;continue}
+ if(!workOnDay(p,day)){skipped++;continue}
  const stats=dayStats(p,data.assignments.filter(x=>x.personId===personId),day,data.projects);
  if(stats.conflict)throw Error(personDisplayName(p)+' · '+fullDate(day)+': Konflikt. Nichts übernommen.');
  if(stats.entries.some(e=>e.a.projectId===a.projectId&&e.a.mode==='full')){existing++;continue}
