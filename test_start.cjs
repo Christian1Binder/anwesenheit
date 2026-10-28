@@ -1,10 +1,10 @@
 // Smoke-Test der gesamten Initialisierung mit minimalen DOM-Testdoubles.
 // Prüft erzeugte Tabellen und sichtbare Zustände, ersetzt keine visuelle Browserprüfung.
 const fs=require('fs'),vm=require('vm'),crypto=require('crypto'),assert=require('assert/strict');
-const html=fs.readFileSync(__dirname+'/index.html','utf8'),nodes=new Map();
+const html=fs.readFileSync(__dirname+'/index.html','utf8'),nodes=new Map(),listeners={};
 function node(id){if(!nodes.has(id))nodes.set(id,{innerHTML:'',textContent:'',value:'',dataset:{},style:{},hidden:false,selectedOptions:[{textContent:''}],classList:{toggle(){},add(){},remove(){}},setAttribute(){},querySelectorAll(){return []},addEventListener(){},showModal(){},close(){}});return nodes.get(id)}
 node('#initial-data').textContent=html.match(/<script id="initial-data"[^>]*>([\s\S]*?)<\/script>/)[1];node('#printKind').value='brief';
-const ctx={console,crypto,Date,setTimeout(){},setInterval(){},clearTimeout(){},localStorage:{getItem(){return null},setItem(){}},document:{querySelector:node,querySelectorAll(){return []},addEventListener(){},body:node('body')},window:{addEventListener(){}}};vm.createContext(ctx);
+const ctx={console,crypto,Date,setTimeout(){},setInterval(){},clearTimeout(){},localStorage:{getItem(){return null},setItem(){}},document:{querySelector:node,querySelectorAll(){return []},addEventListener(name,fn){(listeners[name]??=[]).push(fn)},body:node('body')},window:{addEventListener(){}}};vm.createContext(ctx);
 for(const m of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g))if(!m[1].includes('application/json'))vm.runInContext(m[2],ctx);
 assert(!node('main').innerHTML.includes('Startdaten konnten'),node('main').innerHTML);
 assert.equal((node('#boardBody').innerHTML.match(/<tr>/g)||[]).length,45);
@@ -82,3 +82,25 @@ assert.equal(run('filteredPeople().length'),45);
 run("extraFilters.salutations=['Frau'];render()");
 assert.equal(run('filteredPeople().length'),0);
 console.log('PASS: Ganztage, eigene Kürzel, Demo ohne Teilbuchungen, Team-/Anredefilter.');
+
+run("const fillPerson={...testPerson,schedule:Object.fromEntries([1,2,3,4,5].map(d=>[d,{start:'08:00',hours:8}]))};const fillData={...data,people:[fillPerson],assignments:[{...a,mode:'full'}]};");
+assert.equal(run("buildBoardFill(fillData,'a','2026-10-26','2026-10-30','t').items.length"),4);
+assert.equal(run("buildBoardFill(fillData,'a','2026-10-26','2026-11-02','t').items.length"),5);
+assert.equal(run("buildBoardFill(fillData,'a','2026-10-26','2026-11-02','t').skipped"),2);
+assert.equal(run("buildBoardFill(fillData,'a','2026-10-26','2026-10-26','t').items.length"),0);
+assert.throws(()=>run("buildBoardFill({...fillData,assignments:[...fillData.assignments,{...a,id:'busy',projectId:'u',mode:'full',start:'2026-10-27',end:'2026-10-27',days:[2]}]},'a','2026-10-26','2026-10-30','t')"));
+assert.throws(()=>run("buildBoardFill({...fillData,assignments:[{...a,mode:'full',requestId:'leave'}]},'a','2026-10-26','2026-10-30','t')"));
+assert.throws(()=>run("buildBoardFill(fillData,'a','2026-10-26','2026-10-30','other')"));
+assert(run("buildBoardFill(fillData,'a','2026-10-26','2026-10-30','t').items.every(x=>x.mode==='full'&&x.start===x.end)"));
+assert(listeners.dragstart.length&&listeners.dragover.length&&listeners.drop.length&&listeners.dragend.length);
+// Desktop-Ereignisse: Palette → Ziel sowie Ausfüllgriff → Ziel.
+run("canEditPlan=()=>true;globalThis.dropped=null;dropOnCell=(source,cell)=>{globalThis.dropped={source,cell}};");
+const el={dataset:{project:'w'},classList:{add(){}}},cell={dataset:{cellPerson:'t',bucket:'1',boardTarget:'true'}};
+listeners.dragstart.at(-1)({target:{closest:s=>s==='[data-edit-project]'?null:el},dataTransfer:{setData(){}}});
+listeners.drop.at(-1)({preventDefault(){},target:{closest:()=>cell}});
+assert.equal(run('dropped.source.projectId'),'w');
+el.dataset={fillId:'a',sourceDay:'2026-10-26'};
+listeners.dragstart.at(-1)({target:{closest:s=>s==='[data-edit-project]'?null:el},dataTransfer:{setData(){}}});
+listeners.drop.at(-1)({preventDefault(){},target:{closest:()=>cell}});
+assert.equal(run('dropped.source.fill'),true);
+console.log('PASS: Desktop Drag/Drop-Ereignisse, Ausfüllgriff, Wochenenden, Konfliktabbruch, keine fremde Zeile/Urlaubsentscheidung.');
