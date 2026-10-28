@@ -31,3 +31,7 @@ r=parse('Anrede;Name\n'+ 'A'.repeat(41)+';Alex');assert(r[0].error);
 r=parse('Anrede;Name\n"Frau\nHerr";Alex');assert(r[0].error);
 r=parse('Anrede\tName\tTeam\nFrau\tMuster\tNord');assert.equal(r[0].person.salutation,'Frau');
 console.log('PASS: beide echten Vorlagen importiert, Vorgabe, explizit leer, Dienstgrad, TSV und fehlerhafte Anreden.');
+r=parse('Anrede;Name;Beginn;Mo_Feierabend;Sa_Beginn;Sa_Feierabend;So_Beginn;So_Feierabend\nHerr;Test;08:00;16:00;09:00;14:00;10:00;15:00');assert.equal(r[0].person.schedule[1].hours,8);assert.equal(r[0].person.schedule[6].hours,5);assert.equal(r[0].person.schedule[0].hours,5);
+assert(parse('Name;Mo;Mo_Feierabend\nTest;8;15:00')[0].error);
+assert.equal(parse('Name;Sa_Beginn;Sa_Feierabend\nTest;20:00;24:00')[0].person.schedule[6].hours,4);
+console.log('PASS: Import von Feierabend Mo–So, Wochenenden, Stundenabgleich und 24:00.');
