@@ -128,3 +128,15 @@ Er füllt das Rechteck zwischen Quell- und Zielzelle für die sichtbaren Persone
 in aktueller Sortierung. Ausgefilterte Personen bleiben unverändert. Arbeitsfreie
 Tage werden übersprungen, gleiche Vorhaben nicht dupliziert. Ein Konflikt bricht
 den gesamten Vorgang ab. Rückgängig nimmt die komplette Aktion zurück.
+
+### Feierabend und Wochenendarbeit
+
+- **Regelmäßig:** Person bearbeiten → Individuelle Arbeitswoche. Für jeden Wochentag einschließlich Samstag und Sonntag Beginn und Feierabend einstellen. Die Stunden werden aus der Differenz berechnet; alternativ Stunden eingeben. 0 Stunden bedeutet arbeitsfrei.
+- **Nur an einem Datum:** Tageszelle doppelklicken → **Arbeitszeit / Feierabend** → Arbeitstag wählen, Beginn und Feierabend speichern. Das gilt nur für diese Person und dieses Datum. Anschließend das Vorhaben per Buchstabe, Drag & Drop oder Einfügen zuweisen. Mit „Wochenmodell verwenden“ die Ausnahme zurücksetzen.
+- **Übersicht:** Die Arbeitszeit steht im Zelltooltip, nach Auswahl unter der Tafel und im Tagesdialog. So bleiben die Monatszeilen kompakt. Export & Drucken → **Excel-CSV · Arbeitszeiten / Feierabend je Tag** enthält auch ungebundene und arbeitsfreie Tage des gefilterten Zeitraums.
+- Kopieren übernimmt weiterhin nur das Vorhaben. Jede Zielperson behält ihre eigenen Tageszeiten. Beim Ausfüllen werden Wochenendtage berücksichtigt, sofern dort Arbeitszeit hinterlegt ist; arbeitsfreie Tage werden übersprungen.
+- Ganztagseinsätze passen sich an die Tageszeit an. Gebuchte Tage lassen sich nicht einfach arbeitsfrei schalten. Datumsänderungen mit genehmigtem Urlaub sind gesperrt. Änderungen sind rückgängig machbar.
+- **Import:** Die ausführliche CSV-Vorlage enthält jetzt `Mo_Feierabend` bis `So_Feierabend`. Beginn plus Endzeit ersetzt die Stundenangabe; wenn beides angegeben ist, muss es übereinstimmen. Alte Importdateien bleiben nutzbar.
+- Beginn bis Feierabend zählt vollständig als Arbeitszeit, **ohne automatischen Pausenabzug**. Übernacht-Einsätze sind nicht enthalten; `24:00` ist als Tagesende möglich. Änderungen am regelmäßigen Wochenmodell wirken wie bisher auch auf vergangene Tage; für Einzeländerungen deshalb den Tagesdialog verwenden.
+
+**Code anpassen:** `workOnDay(person,datum)` ist die gemeinsame Quelle für Planung, Urlaub, Ausfüllen und Auswertungen. Beispiel einer lokalen Datums-Ausnahme: `person.daySchedule = {'2026-10-31': {start:'09:00', hours:5}}`. `null` steht für explizit arbeitsfrei; ohne Schlüssel gilt `schedule`. Endzeiten werden daraus abgeleitet, nicht doppelt gespeichert. Änderungen in der Oberfläche laufen über `commit()` und `setDayTime()`, damit Validierung und Rückgängig greifen. JSON-Sicherungen und gemeinsame Dateien enthalten die Ausnahmen; personenbezogene Daten bleiben lokal.
