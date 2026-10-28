@@ -72,3 +72,9 @@ node test_shared.cjs
 Tests verwenden ausschließlich synthetische Daten. Sie prüfen Berechnungen,
 Halbtage, Schnellzuweisungen, Notizen, Import, Genehmigungen und Fehlerpfade bei
 simulierter Datei-I/O. Kein Ersatz für einen Edge-/SMB-Test vor Ort.
+
+## Logo
+
+`teamplan-logo.svg` ist das skalierbare Original: Personenpunkte und Planungsbalken
+in Türkis. Kopfbereich und Browser-Tab verwenden dasselbe direkt eingebettete SVG.
+Die HTML-Datei bleibt damit ohne weitere Dateien offline nutzbar.
