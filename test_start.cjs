@@ -104,3 +104,15 @@ listeners.dragstart.at(-1)({target:{closest:s=>s==='[data-edit-project]'?null:el
 listeners.drop.at(-1)({preventDefault(){},target:{closest:()=>cell}});
 assert.equal(run('dropped.source.fill'),true);
 console.log('PASS: Desktop Drag/Drop-Ereignisse, Ausfüllgriff, Wochenenden, Konfliktabbruch, keine fremde Zeile/Urlaubsentscheidung.');
+// Tatsächlicher Importdialog und Vorschau, nicht nur Parser.
+run("requirePlanEdit=()=>true;openPeopleImport()");
+assert(node('#modalBody').innerHTML.includes('importSalutation'));
+node('#peoplePaste').value='Anrede;Name;Team;Wochenstunden;Beginn\nFrau;Testperson;Nord;40;08:00';node('#importHeader').value='auto';node('#importHours').value='40';node('#importStart').value='08:00';
+node('#checkPeople').onclick();
+assert(node('#peopleImportPreview').innerHTML.includes('<th>Anrede</th>'));
+assert(node('#peopleImportPreview').innerHTML.includes('<td>Frau</td>'));
+run("extraFilters={teams:[],salutations:[],categories:[],sort:''};db.people[0].salutation='Frau';render();globalThis.exported='';download=(s)=>{globalThis.exported=s}");
+assert(node('#boardBody').innerHTML.includes('Frau Beispielperson 01'));
+for(const k of ['overview','matrix','daily']){run(`exportCSV('${k}')`);assert(run('exported').includes('"Anrede"'));assert(run('exported').includes('"Frau"'))}
+assert.equal(run('JSON.parse(JSON.stringify(snapshotData())).people[0].salutation'),'Frau');
+console.log('PASS: echter Importdialog/Vorschau, Personaltafel, drei CSV-Exporte und JSON-Sicherung mit Anrede.');
