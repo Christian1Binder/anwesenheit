@@ -43,10 +43,10 @@ assert.throws(()=>run("buildWeekCopy(data,'2026-10-27','2026-11-02',['t'])"));
 assert.equal(run("buildWeekCopy(data,'2026-10-26','2027-01-04',['t']).items[0].start"),'2027-01-04');
 console.log('PASS: vollständige/teilweise/flexible Besetzung, angrenzende Buchungen, Konflikte, Wochenkopie, Duplikate, Serien, Urlaubsausschluss, Jahreswechsel.');
 assert.equal(run("view='month';boardCompact"),true);
-assert.equal(run("makeQuickAssignment({...data,assignments:[]},'t','w','2026-10-26','morning').mode"),'morning');
+assert.throws(()=>run("makeQuickAssignment({...data,assignments:[]},'t','w','2026-10-26','morning')"));
 assert.throws(()=>run("makeQuickAssignment(data,'t','w','2026-10-26','full')"));
 assert.throws(()=>run("makeQuickAssignment({...data,assignments:[]},'t','w','2026-10-27','full')"));
-assert.equal(run("makeQuickAssignment({...data,assignments:[{...a,mode:'morning'}]},'t','w','2026-10-26','afternoon').mode"),'afternoon');
+assert.throws(()=>run("makeQuickAssignment({...data,assignments:[{...a,mode:'morning'}]},'t','w','2026-10-26','afternoon')"));
 run("validateDayNotes({'2026-10-26':'Besprechung'})");
 assert.throws(()=>run("validateDayNotes({'2026-02-30':'Ungültig'})"));
 assert.throws(()=>run("validateDayNotes({'2026-10-26':'x'.repeat(1001)})"));
@@ -70,3 +70,15 @@ assert.equal(run("cellNoteTooltip('m0',{start:'2026-10-27',end:'2026-10-27'})"),
 assert(node('#boardBody').innerHTML.includes('comment-corner'));
 assert(node('#dayNotePrint').innerHTML.includes('&lt;b&gt;Nur Person 0'));
 console.log('PASS: personenbezogene Kommentare, Tagesabgrenzung, Validierung, Markierung und sicherer Druck.');
+
+assert.equal(run("boardCode({name:'Projekt',code:'IT'})"),'IT');
+assert.equal(run("boardCode({name:'Atlas'})"),'ATLA');
+assert(run("demoData().assignments.every(a=>a.mode==='full')"));
+assert.equal(run("buildWeekCopy(data,'2026-10-26','2026-11-02',['t']).items[0].mode"),'full');
+run("extraFilters.teams=['Team Nord'];render()");
+assert.equal(run('filteredPeople().length'),15);
+run("extraFilters.teams=[];extraFilters.salutations=['Ohne Anrede'];render()");
+assert.equal(run('filteredPeople().length'),45);
+run("extraFilters.salutations=['Frau'];render()");
+assert.equal(run('filteredPeople().length'),0);
+console.log('PASS: Ganztage, eigene Kürzel, Demo ohne Teilbuchungen, Team-/Anredefilter.');
