@@ -79,8 +79,7 @@ Die HTML-Datei bleibt damit ohne weitere Dateien offline nutzbar.
 
 Vorhaben aus der Palette auf einen Tag ziehen: direkte Ganztagszuweisung,
 mit Konfliktprüfung. In Woche/Monat besitzen eindeutige ganztägige Einsätze
-unten rechts einen Ausfüllgriff. Diesen innerhalb derselben Personenzeile
-auf den letzten gewünschten Tag ziehen. Freie Arbeitstage werden ausgefüllt,
+unten rechts einen Ausfüllgriff. Diesen bis zur gewünschten Zielzelle ziehen – auch nach unten über mehrere Personen. Freie Arbeitstage werden ausgefüllt,
 arbeitsfreie Tage übersprungen. Andere Belegungen brechen den gesamten Vorgang
 ab; nichts wird überschrieben. Rückwärtsziehen füllt frühere Tage ebenfalls aus.
 Bestehende gleiche Ganztagszuweisungen werden nicht dupliziert. Zellkommentare
@@ -111,3 +110,21 @@ Importparser, beide Vorlagen, Beispieldateien, Importvorschau, Such-/Filterfelde
 Auswahl und Detailanzeigen, Berichte/Druck, CSV/JSON, gemeinsamer Dateistand und
 Antragssnapshots. Bestehende Daten kompatibel halten. Tests müssen mindestens
 Vorlage → Import → Anzeige → Export prüfen; ein reiner Parser-Test genügt nicht.
+
+## Excel-Tastatur und Ausfüllen über mehrere Personen
+
+Zelle anklicken und einen Anfangsbuchstaben des Vorhabennamens oder Kürzels tippen.
+Eindeutige Treffer werden direkt zugewiesen; bei mehreren Treffern erscheint eine
+Auswahl. Ein belegtes Ziel wird nicht überschrieben. Nur ganze Arbeitstage.
+
+Strg+C/Strg+V (Mac: ⌘C/⌘V) oder die Schaltflächen kopieren eine eindeutig belegte
+Zelle auf eine andere. Die Kopie gilt nur innerhalb dieser App-Sitzung und dieses
+Plans. Keine Systemzwischenablage, keine Übertragung ins Internet. Kommentare,
+Notizen und Genehmigungen werden nicht mitkopiert. Am Ziel gilt dessen eigene
+Tagesarbeitszeit. Andere Belegungen blockieren das Einfügen.
+
+Der Griff unten rechts lässt sich horizontal, vertikal oder diagonal ziehen.
+Er füllt das Rechteck zwischen Quell- und Zielzelle für die sichtbaren Personen
+in aktueller Sortierung. Ausgefilterte Personen bleiben unverändert. Arbeitsfreie
+Tage werden übersprungen, gleiche Vorhaben nicht dupliziert. Ein Konflikt bricht
+den gesamten Vorgang ab. Rückgängig nimmt die komplette Aktion zurück.
