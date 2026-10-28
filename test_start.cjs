@@ -116,3 +116,18 @@ assert(node('#boardBody').innerHTML.includes('Frau Beispielperson 01'));
 for(const k of ['overview','matrix','daily']){run(`exportCSV('${k}')`);assert(run('exported').includes('"Anrede"'));assert(run('exported').includes('"Frau"'))}
 assert.equal(run('JSON.parse(JSON.stringify(snapshotData())).people[0].salutation'),'Frau');
 console.log('PASS: echter Importdialog/Vorschau, Personaltafel, drei CSV-Exporte und JSON-Sicherung mit Anrede.');
+run("const rectData={...fillData,people:[fillPerson,{...fillPerson,id:'t2',schedule:{1:{start:'09:00',hours:4},2:{start:'09:00',hours:4}}},{...fillPerson,id:'hidden'}]};");
+assert.equal(run("buildRectangleFill(rectData,'a','2026-10-26','2026-10-27','t2',['t','t2']).items.length"),3);
+assert(run("buildRectangleFill(rectData,'a','2026-10-26','2026-10-27','t2',['t','t2']).items.every(x=>x.personId!=='hidden'&&x.note==='')"));
+assert.equal(run("buildRectangleFill(rectData,'a','2026-10-26','2026-10-26','t2',['t2','t']).items.length"),1);
+assert.throws(()=>run("buildRectangleFill(rectData,'a','2026-10-26','2026-10-27','hidden',['t','t2'])"));
+assert.throws(()=>run("buildRectangleFill({...rectData,assignments:[...rectData.assignments,{...a,id:'occupied',personId:'t2',projectId:'u',mode:'full'}]},'a','2026-10-26','2026-10-27','t2',['t','t2'])"));
+assert.equal(run("projectMatches({projects:[{id:'a',code:'IT',name:'Technik'},{id:'b',code:'IN',name:'Intern'},{id:'c',code:'U',name:'Urlaub',system:'leave'}]},'i').length"),2);
+assert.equal(run("projectMatches({projects:[{id:'a',code:'ÜB',name:'Übung'}]},'ü').length"),1);
+// Echte Kopier-/Einfügefunktionen mit commit, Rückgängig und unveränderten Notizen.
+run("db=demoData();db.assignments=[];db.cellNotes={m0:{'2026-10-26':'Privater Hinweis'}};anchor='2026-10-26';view='week';surface='board';extraFilters={teams:[],salutations:[],categories:[],sort:''};db.assignments.push(makeQuickAssignment(db,'m0','p0',anchor,'full'));render();selectedBoardCell={personId:'m0',index:0};copySelectedCell();selectedBoardCell={personId:'m2',index:0};pasteSelectedCell();");
+assert.equal(run("db.assignments.filter(a=>a.personId==='m2').length"),1);
+assert.equal(run("dayStats(db.people[2],db.assignments.filter(a=>a.personId==='m2'),'2026-10-26',db.projects).booked"),4);
+assert.equal(run("db.cellNotes.m2"),undefined);
+run("undo()");assert.equal(run("db.assignments.filter(a=>a.personId==='m2').length"),0);
+console.log('PASS: Rechteck über Personen/Tage, Filter/Reihenfolge, Konfliktabbruch, Buchstaben/Umlaute, echtes Copy/Paste, individuelle Tagesstunden und Rückgängig.');
