@@ -79,8 +79,7 @@ Die HTML-Datei bleibt damit ohne weitere Dateien offline nutzbar.
 
 Vorhaben aus der Palette auf einen Tag ziehen: direkte Ganztagszuweisung,
 mit Konfliktprüfung. In Woche/Monat besitzen eindeutige ganztägige Einsätze
-unten rechts einen Ausfüllgriff. Diesen bis zur gewünschten Zielzelle ziehen – auch nach unten über mehrere Personen. Freie Arbeitstage werden ausgefüllt,
-arbeitsfreie Tage übersprungen. Andere Belegungen brechen den gesamten Vorgang
+unten rechts einen Ausfüllgriff. Diesen bis zur gewünschten Zielzelle ziehen – auch nach unten über mehrere Personen. Alle ausgewählten freien Zellen werden ausgefüllt, auch an arbeitsfreien Tagen. Andere Belegungen brechen den gesamten Vorgang
 ab; nichts wird überschrieben. Rückwärtsziehen füllt frühere Tage ebenfalls aus.
 Bestehende gleiche Ganztagszuweisungen werden nicht dupliziert. Zellkommentare
 bleiben an ihrem ursprünglichen Tag. Genehmigter Urlaub ist nicht ziehbar.
@@ -125,8 +124,8 @@ Tagesarbeitszeit. Andere Belegungen blockieren das Einfügen.
 
 Der Griff unten rechts lässt sich horizontal, vertikal oder diagonal ziehen.
 Er füllt das Rechteck zwischen Quell- und Zielzelle für die sichtbaren Personen
-in aktueller Sortierung. Ausgefilterte Personen bleiben unverändert. Arbeitsfreie
-Tage werden übersprungen, gleiche Vorhaben nicht dupliziert. Ein Konflikt bricht
+in aktueller Sortierung. Ausgefilterte Personen bleiben unverändert. Auch arbeitsfreie
+Tage werden eingeplant, gleiche Vorhaben nicht dupliziert. Ein Konflikt bricht
 den gesamten Vorgang ab. Rückgängig nimmt die komplette Aktion zurück.
 
 ### Feierabend und Wochenendarbeit
@@ -134,7 +133,7 @@ den gesamten Vorgang ab. Rückgängig nimmt die komplette Aktion zurück.
 - **Regelmäßig:** Person bearbeiten → Individuelle Arbeitswoche. Für jeden Wochentag einschließlich Samstag und Sonntag Beginn und Feierabend einstellen. Die Stunden werden aus der Differenz berechnet; alternativ Stunden eingeben. 0 Stunden bedeutet arbeitsfrei.
 - **Nur an einem Datum:** Tageszelle doppelklicken → **Arbeitszeit / Feierabend** → Arbeitstag wählen, Beginn und Feierabend speichern. Das gilt nur für diese Person und dieses Datum. Anschließend das Vorhaben per Buchstabe, Drag & Drop oder Einfügen zuweisen. Mit „Wochenmodell verwenden“ die Ausnahme zurücksetzen.
 - **Übersicht:** Die Arbeitszeit steht im Zelltooltip, nach Auswahl unter der Tafel und im Tagesdialog. So bleiben die Monatszeilen kompakt. Export & Drucken → **Excel-CSV · Arbeitszeiten / Feierabend je Tag** enthält auch ungebundene und arbeitsfreie Tage des gefilterten Zeitraums.
-- Kopieren übernimmt weiterhin nur das Vorhaben. Jede Zielperson behält ihre eigenen Tageszeiten. Beim Ausfüllen werden Wochenendtage berücksichtigt, sofern dort Arbeitszeit hinterlegt ist; arbeitsfreie Tage werden übersprungen.
+- Kopieren übernimmt weiterhin nur das Vorhaben. Jede Zielperson behält ihre eigenen Tageszeiten. Beim Ausfüllen werden auch Wochenenden und arbeitsfreie Tage eingeplant; fehlende Tageszeiten werden automatisch vorläufig ergänzt.
 - Ganztagseinsätze passen sich an die Tageszeit an. Gebuchte Tage lassen sich nicht einfach arbeitsfrei schalten. Datumsänderungen mit genehmigtem Urlaub sind gesperrt. Änderungen sind rückgängig machbar.
 - **Import:** Die ausführliche CSV-Vorlage enthält jetzt `Mo_Feierabend` bis `So_Feierabend`. Beginn plus Endzeit ersetzt die Stundenangabe; wenn beides angegeben ist, muss es übereinstimmen. Alte Importdateien bleiben nutzbar.
 - Beginn bis Feierabend zählt vollständig als Arbeitszeit, **ohne automatischen Pausenabzug**. Übernacht-Einsätze sind nicht enthalten; `24:00` ist als Tagesende möglich. Änderungen am regelmäßigen Wochenmodell wirken wie bisher auch auf vergangene Tage; für Einzeländerungen deshalb den Tagesdialog verwenden.
@@ -164,3 +163,15 @@ Die Sollstunden sind getrennt vom planbaren Zeitfenster. Ein längeres Fenster a
 Dies sind **geplante Mehrstunden je Tag**, kein Nachweis tatsächlich geleisteter Arbeit und kein fortlaufendes Zeitkonto mit Anfangssaldo, Übertrag oder Freizeitausgleich. Pausen werden weiterhin nicht automatisch abgezogen.
 
 Für Anpassungen im Code: `daySchedule[datum] = {start:'08:00', hours:10, targetHours:8}`. `targetOnDay()` liest das Soll, `workOnDay()` das Zeitfenster, `dayStats()` berechnet `overtime` aus konfliktfreien Vorhabenstunden über Soll. `summarize()` summiert diese Tageswerte; kürzere Tage verrechnen die Mehrstunden anderer Tage nicht stillschweigend.
+
+### Direkt einplanen, Zeiten danach anpassen
+
+Ein Vorhaben kann sofort auf jeden freien Kalendertag gesetzt werden: per Anfangsbuchstabe, Palette/Drag & Drop, Tagesdialog, Mehrfachzuweisung, Ausfüllgriff oder Copy & Paste. Eine vorherige Einrichtung des Wochenendtages ist nicht mehr erforderlich. Beim Ausfüllen zählen sämtliche Tage im Rechteck; bei Serien gelten die angehakten Wochentage.
+
+Existiert keine Tagesarbeitszeit, übernimmt die App **Beginn und Dauer des ersten regulären Arbeitstags der Person in der Reihenfolge Mo–So** (ersatzweise 08:00–16:00). Das Soll des bisher freien Tages bleibt 0. So erzeugt z. B. ein zusätzlicher Samstag mit 8 Stunden Vorhabeneinsatz automatisch 8 geplante Mehrstunden. An normalen Tagen bleibt das bestehende Soll erhalten; ein zusätzlicher regulärer Tag erzeugt nicht künstlich weitere Stunden. Abwesenheiten und Abgaben ergeben weiterhin keine Mehrarbeit.
+
+Automatisch ergänzte Zeiten heißen im Zelltooltip und bei der Auswahl **„Zeit vorläufig“** und im Arbeitszeitenexport **„Vorläufig automatisch“**. Nachträglich Zelle doppelklicken → Arbeitszeit / Überstunden → Beginn oder Feierabend ändern. Sollstunden bleiben getrennt. Speichern macht die Zeiten zu einer bewussten Tagesausnahme; eine Pflicht zur Zeitbestätigung gibt es nicht. Alle Auswertungen rechnen sofort mit dem jeweiligen Planstand.
+
+Beim Entfernen der letzten Zuweisung verschwindet auch eine unbestätigte automatisch erzeugte Tageszeit. Manuell eingestellte Tageszeiten bleiben erhalten. Rückgängig stellt Zuweisung und Tageszeit gemeinsam wieder her. Bestehende Belegungen, genehmigter Urlaub und Bearbeitungsrechte bleiben geschützt. Alte Serien ohne die neue Automatik werden nicht beim Öffnen um zusätzliche Wochenendtage erweitert.
+
+Code: Neue Ganztagseinsätze tragen `autoDay: true`. `assignmentWork()` stellt bereits für die Vorschau die gleiche Tageszeit bereit wie `prepareAssignmentDays()` beim Speichern über `commit()`. Automatische Tagesausnahmen speichern `automatic: true`, Soll 0 und ggf. `previousOff`, um ein zuvor ausdrücklich arbeitsfreies Datum nach Löschen wiederherzustellen. Beim manuellen Bearbeiten entfällt die Automatikmarkierung.
