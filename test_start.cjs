@@ -290,3 +290,53 @@ run("exportCSV('daily')");assert(run("exported.includes('Stunden netto')&&export
 run("surface='report';render()");assert(node('#peopleReport').innerHTML.includes('9,25'));
 assert(run("JSON.parse(JSON.stringify(snapshotData())).people[0].daySchedule['2026-10-26'].hours===10"));
 console.log('PASS: Standard-Pausenabzug, Schwellen, freie Tage, Dialog/Undo, manuelle Pause, Anrechnung, Nettomehrarbeit, Wochenendkopie, Urlaub, Abgabe, alte Teilzeiten, Bedarf sowie CSV/JSON.');
+// Abbau als dezenter Kommentar plus Stundenkonto mit manuellen Korrekturen.
+run("db=defaultDemoData();db.assignments=[];anchor='2026-10-26';view='week';surface='board';assignCellProject('p0',{personId:'m0',index:0,day:'2026-10-26'});editCellComment('m0',{start:'2026-10-26',end:'2026-10-26'})");
+assert(node('#modalBody').innerHTML.includes('commentTimeOff'));
+node('#commentDay').value='2026-10-26';node('#commentText').value='Nachmittag frei';node('#commentTimeOff').value='2';node('#cellCommentForm').onsubmit({preventDefault(){}});
+assert.equal(run("db.people[0].timeOff['2026-10-26']"),2);
+assert.equal(run("reportCache.get('m0').project"),5.5);
+assert.equal(run("reportCache.get('m0').absence"),2);
+assert.equal(run("reportCache.get('m0').booked"),7.5);
+assert.equal(run("dayStats(db.people[0],db.assignments,'2026-10-26',db.projects).freeDays"),0);
+assert(run("cellNoteTooltip('m0',{start:'2026-10-26',end:'2026-10-26'}).includes('Überstundenabbau: 2 h')"));
+assert(node('#dayNotePrint').innerHTML.includes('Überstundenabbau: 2 h'));
+assert.throws(()=>run("setTimeOff(db,'m0','2026-10-26',9)"),/Netto/);
+assert.equal(run("coverageFor({...db.projects[0],staffing:{start:'2026-10-26',end:'2026-10-26',days:[1],needed:1,fullDay:true,timeStart:'08:00',timeEnd:'16:00'}},'2026-10-26',db).covered"),0);
+run("accountAsOf='2026-10-26';editHourAccount('m0')");
+node('#hourAutoCredit').checked=true;node('#hourStart').value='2026-10-26';node('#hourOpening').value='10';node('#hourEntryDate').value='2026-10-26';node('#hourEntryHours').value='1.5';node('#hourEntryNote').value='Abgleich Iststand';node('#hourAccountForm').onsubmit({preventDefault(){}});
+assert.equal(run("hourBalance(db,db.people[0],'2026-10-26').balance"),9.5);
+assert.equal(run("db.people[0].hourAccount.entries.length"),1);
+run("commit(x=>{x.people[0].hourAccount.entries.push({id:'future',date:'2026-10-27',hours:4,note:'Später'})})");
+assert.equal(run("hourBalance(db,db.people[0],'2026-10-26').balance"),9.5);
+assert.equal(run("hourBalance(db,db.people[0],'2026-10-27').balance"),13.5);
+assert.equal(run("hourBalance(db,db.people[0],'2026-10-25')"),null);
+// Abbau am verlängerten Tag wird genau einmal vom Konto abgezogen.
+run("commit(x=>setDayTime(x,'m0','2026-10-26',{start:'08:00',hours:10,targetHours:7.5}))");
+assert.equal(run("hourBalance(db,db.people[0],'2026-10-26').earned"),1.75);
+assert.equal(run("hourBalance(db,db.people[0],'2026-10-26').balance"),11.25);
+assert.equal(run("reportCache.get('m0').project"),7.25);
+// Reales Bearbeiten/Entfernen einer manuellen Buchung über gebundene Buttons.
+const editHourButton={dataset:{editHour:'future'}},deleteHourButton={dataset:{deleteHour:'future'}};
+const oldQueryAll=ctx.document.querySelectorAll;
+ctx.document.querySelectorAll=selector=>selector==='[data-edit-hour]'?[editHourButton]:selector==='[data-delete-hour]'?[deleteHourButton]:[];
+run("editHourAccount('m0')");editHourButton.onclick();
+node('#hourAutoCredit').checked=true;node('#hourStart').value='2026-10-26';node('#hourOpening').value='10';node('#hourEntryHours').value='3';node('#hourAccountForm').onsubmit({preventDefault(){}});
+assert.equal(run("db.people[0].hourAccount.entries.find(e=>e.id==='future').hours"),3);
+deleteHourButton.onclick();assert.equal(run("db.people[0].hourAccount.entries.length"),1);
+ctx.document.querySelectorAll=oldQueryAll;
+run('undo()');assert.equal(run("db.people[0].hourAccount.entries.length"),2);
+for(const kind of ['overview','hours','daily','matrix']){run(`exportCSV('${kind}')`);assert(run("exported.includes('Überstundenabbau')"),kind)}
+node('#accountAsOf').value='2026-10-26';run('openAccounts()');assert(node('#accountList').innerHTML.includes('11,25 h'));node('#accountExport').onclick();assert(run("exported.includes('Rechnerischer Saldo')"));
+assert.equal(run("JSON.parse(JSON.stringify(snapshotData())).people[0].hourAccount.opening"),10);
+assert.throws(()=>run("validateHourAccount({startDate:'2026-10-26',opening:0,entries:[{id:'bad',date:'2026-10-25',hours:2,note:'Fehler'}]})"));
+run("editCellComment('m0',{start:'2026-10-26',end:'2026-10-26'})");node('#commentDay').value='2026-10-26';node('#commentText').value='Bleibt';node('#commentTimeOff').value='';node('#cellCommentForm').onsubmit({preventDefault(){}});
+assert.equal(run("db.people[0].timeOff['2026-10-26']"),undefined);assert.equal(run("db.cellNotes.m0['2026-10-26']"),'Bleibt');
+console.log('PASS: Abbau-Kommentar/Dialog, Nettozeit, Tagesbindung, Bedarf, Druck/CSV, Kontoanfang, Stichtag, manuelle Buchung bearbeiten/löschen, keine Doppelzählung, Validierung, JSON und Undo.');
+run("editHourAccount('m0')");node('#hourStart').value='2026-10-26';node('#hourOpening').value='10';node('#hourEntryHours').value='';node('#hourAutoCredit').checked=false;node('#hourAccountForm').onsubmit({preventDefault(){}});
+assert.equal(run("db.people[0].hourAccount.autoCredit"),false);
+assert.equal(run("hourBalance(db,db.people[0],'2026-10-26').earned"),0);
+assert.equal(run("hourBalance(db,db.people[0],'2026-10-26').balance"),11.5);
+run("commit(x=>setTimeOff(x,'m0','2026-10-26',2))");
+assert.equal(run("hourBalance(db,db.people[0],'2026-10-26').balance"),9.5);
+console.log('PASS: optionale automatische Gutschrift abschaltbar, manueller Kontomodus und automatischer Tagesabbau ohne Doppelbuchung.');
