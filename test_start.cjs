@@ -6,6 +6,9 @@ function node(id){if(!nodes.has(id))nodes.set(id,{innerHTML:'',textContent:'',va
 node('#initial-data').textContent=html.match(/<script id="initial-data"[^>]*>([\s\S]*?)<\/script>/)[1];node('#printKind').value='brief';
 const ctx={console,crypto,Date,setTimeout(){},setInterval(){},clearTimeout(){},localStorage:{getItem(){return null},setItem(){}},document:{querySelector:node,querySelectorAll(){return []},addEventListener(name,fn){(listeners[name]??=[]).push(fn)},body:node('body')},window:{addEventListener(){}}};vm.createContext(ctx);
 for(const m of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g))if(!m[1].includes('application/json'))vm.runInContext(m[2],ctx);
+// Bestehende Stunden-Regressionsfälle explizit im unterstützten Modus
+// „Pause angerechnet“; der Standard mit Abzug wird unten separat geprüft.
+vm.runInContext("const defaultDemoData=demoData;demoData=()=>{const x=defaultDemoData();x.people.forEach(p=>p.breakMode='credited');return x};db.people.forEach(p=>p.breakMode='credited');render()",ctx);
 assert(!node('main').innerHTML.includes('Startdaten konnten'),node('main').innerHTML);
 assert.equal((node('#boardBody').innerHTML.match(/<tr>/g)||[]).length,45);
 assert.equal(node('#boardView').hidden,false);assert.equal(node('#reportView').hidden,true);assert.equal(node('body').dataset.printKind,'board');
@@ -21,7 +24,7 @@ assert(node('#projectOverviewBody').innerHTML.includes('Ohne Bedarf'));
 for(const v of ['month','year'])vm.runInContext(`view='${v}';render()`,ctx);
 console.log('PASS: Vorhabenansicht Woche/Monat/Jahr.');
 vm.runInContext(`
-const testPerson={id:'t',name:'Test',schedule:{1:{start:'08:00',hours:8}}};
+const testPerson={breakMode:'credited',id:'t',name:'Test',schedule:{1:{start:'08:00',hours:8}}};
 const testProject={id:'w',name:'Arbeit',kind:'work',staffing:{start:'2026-10-26',end:'2026-11-02',timeStart:'08:00',timeEnd:'16:00',needed:1,days:[1]}};
 const a={id:'a',personId:'t',projectId:'w',start:'2026-10-26',end:'2026-10-26',days:[1],mode:'clock',timeStart:'08:00',timeEnd:'16:00',load:100};
 const data={people:[testPerson],projects:[testProject,{id:'u',kind:'absence'}],assignments:[a]};
@@ -246,3 +249,44 @@ assert.equal(run("workOnDay(db.people[2],'2026-11-08').hours"),4);
 run("anchor='2026-11-02';render();exportCSV('hours')");assert(run("exported.includes('Vorläufig automatisch')"));
 assert.equal(run("JSON.parse(JSON.stringify(snapshotData())).people[2].daySchedule['2026-11-08'].targetHours"),0);
 console.log('PASS: direkte Wochenendzuweisung, Copy/Paste, Rechteck, Mehrfach-/Serienformular, individuelle Vorgabe, automatische Mehrstunden, spätere Zeitänderung, Löschen/Undo, Altbestand und CSV/JSON.');
+// Standardregel ohne Anrechnung: vollständiger End-to-End-Pfad.
+run("demoData=defaultDemoData;db=demoData();db.assignments=[];anchor='2026-10-26';view='week';surface='board';extraFilters={teams:[],salutations:[],categories:[],sort:''};assignCellProject('p0',{personId:'m0',index:0,day:'2026-10-26'})");
+assert.equal(run("reportCache.get('m0').booked"),7.5);
+assert.equal(run("dayStats(db.people[0],db.assignments,'2026-10-26',db.projects).free"),0);
+assert.equal(run("dayStats(db.people[0],db.assignments,'2026-10-26',db.projects).freeDays"),0);
+assert.equal(run("dayStats(db.people[0],db.assignments,'2026-10-26',db.projects).presence"),8);
+assert.equal(run("dayStats(db.people[0],db.assignments,'2026-10-26',db.projects).pauseDeducted"),30);
+assert.equal(run("reportCache.get('m0').conflicts.length"),0);
+assert(run("workLabel(db.people[0],'2026-10-26').includes('7,5 h netto')"));
+assert(node('#boardInfo').textContent.includes('freie Personentage'));
+for(const [gross,pause]of [[6,0],[6+1/60,30],[6.5,30],[9,30],[9.5,30],[9.5+1/60,45],[10,45]])assert.equal(run(`automaticBreak(${gross})`),pause);
+assert.equal(run("netHours({},{hours:8,pauseMinutes:60})"),7);
+assert.equal(run("netHours({breakMode:'credited'},{hours:8})"),8);
+run("editDayTime('m0','2026-10-26')");assert(node('#modalBody').innerHTML.includes('dayPause'));
+node('#dayWork').value='work';node('#dayStart').value='08:00';node('#dayEnd').value='18:00';node('#dayTarget').value='7.5';node('#dayPause').value='';node('#dayTimeForm').onsubmit({preventDefault(){}});
+assert.equal(run("reportCache.get('m0').booked"),9.25);assert.equal(run("reportCache.get('m0').overtime"),1.75);
+run("editDayTime('m0','2026-10-26')");node('#dayPause').value='60';node('#dayTimeForm').onsubmit({preventDefault(){}});
+assert.equal(run("reportCache.get('m0').booked"),9);assert.equal(run("reportCache.get('m0').overtime"),1.5);
+run('undo()');assert.equal(run("reportCache.get('m0').booked"),9.25);
+run("editDayTime('m0','2026-10-26')");node('#dayPause').value='0';node('#dayTimeForm').onsubmit({preventDefault(){}});
+assert(node('#dayTimeError').textContent.includes('Mindestpause'));
+assert.equal(run("reportCache.get('m0').booked"),9.25);
+// Copy & Paste übernimmt weder Pause noch Sonderzeiten der Quelle.
+run("selectedBoardCell={personId:'m0',index:0};copySelectedCell();selectedBoardCell={personId:'m1',index:5};pasteSelectedCell()");
+assert.equal(run("reportCache.get('m1').overtime"),6);
+assert.equal(run("dayStats(db.people[1],db.assignments.filter(a=>a.personId==='m1'),'2026-10-31',db.projects).pauseDeducted"),0);
+run("assignCellProject('p0',{personId:'m0',index:5,day:'2026-10-31'})");
+assert.equal(run("dayStats(db.people[0],db.assignments.filter(a=>a.personId==='m0'),'2026-10-31',db.projects).overtime"),7.5);
+// Urlaub, Abgabe, Legacy-Aufteilung und Konflikte mit derselben Nettobasis.
+run("const pausePerson={id:'pause',name:'Test',team:'T',schedule:{1:{start:'08:00',hours:8}}};const pauseAssignment={...db.assignments[0],personId:'pause',start:'2026-10-26',end:'2026-10-26',days:[1],mode:'full'};");
+assert.equal(run("dayStats(pausePerson,[{...pauseAssignment,requestId:'leave'}],'2026-10-26',[{id:'p0',kind:'absence'}]).absence"),7.5);
+assert.equal(run("dayStats(pausePerson,[{...pauseAssignment,requestId:'leave'}],'2026-10-26',[{id:'p0',kind:'absence'}]).free"),0);
+assert.equal(run("dayStats(pausePerson,[pauseAssignment],'2026-10-26',[{id:'p0',kind:'detached'}]).overtime"),0);
+assert.equal(run("dayStats(pausePerson,[{...pauseAssignment,mode:'morning'},{...pauseAssignment,id:'second',mode:'afternoon'}],'2026-10-26',db.projects).booked"),7.5);
+assert.equal(run("dayStats(pausePerson,[pauseAssignment,{...pauseAssignment,id:'overlap'}],'2026-10-26',db.projects).conflict"),true);
+assert.equal(run("coverageFor({...db.projects[0],staffing:{start:'2026-10-26',end:'2026-10-26',days:[1],needed:1,fullDay:true,timeStart:'08:00',timeEnd:'16:00'}},'2026-10-26',{people:[pausePerson],assignments:[pauseAssignment],projects:db.projects}).covered"),1);
+run("exportCSV('hours')");assert(run("exported.includes('Pausenabzug min')&&exported.includes('Planbar netto h')"));
+run("exportCSV('daily')");assert(run("exported.includes('Stunden netto')&&exported.includes('abgezogene Pause')"));
+run("surface='report';render()");assert(node('#peopleReport').innerHTML.includes('9,25'));
+assert(run("JSON.parse(JSON.stringify(snapshotData())).people[0].daySchedule['2026-10-26'].hours===10"));
+console.log('PASS: Standard-Pausenabzug, Schwellen, freie Tage, Dialog/Undo, manuelle Pause, Anrechnung, Nettomehrarbeit, Wochenendkopie, Urlaub, Abgabe, alte Teilzeiten, Bedarf sowie CSV/JSON.');
