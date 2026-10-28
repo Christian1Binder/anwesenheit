@@ -148,3 +148,19 @@ den gesamten Vorgang ab. Rückgängig nimmt die komplette Aktion zurück.
 Im Formular lassen sich Anrede, Name, Team, Arbeitsbeginn, Stunden und Feierabend für Mo–So ändern. Speichern aktualisiert die Person unter derselben ID: Vorhaben, Kommentare, Tagesausnahmen und Anträge bleiben zugeordnet. Die Änderung erscheint in Ansichten, Filtern, CSV und JSON und lässt sich rückgängig machen. Historische Antragssnapshots bleiben als Nachweis unverändert. Ein Wochenmodell darf gebuchte Einsätze nicht durch arbeitsfreie Tage verschwinden lassen oder genehmigten Urlaub verändern. Einzelne abweichende Arbeitszeiten weiterhin über den Tagesdialog erfassen.
 
 Im gemeinsamen Betrieb zuerst als Planer die Bearbeitung übernehmen und anschließend gemeinsam speichern. Lokal den aktualisierten Datenstand als JSON sichern. Die Personalliste verwendet die vorhandenen Bearbeitungsrechte und Sperren; Nutzdaten werden nicht in den HTML-Code geschrieben.
+
+### Überstunden planen
+
+Tageszelle doppelklicken → **Arbeitszeit / Überstunden**. Beispiel: Beginn 08:00, Feierabend 18:00, **Sollstunden 8**. Nach Zuweisung eines Vorhabens entstehen **2 geplante Überstunden**. An einem regulär freien Samstag oder Sonntag mit Soll 0 zählt die gesamte zugewiesene Arbeit als Mehrarbeit. Regelmäßige Samstagsarbeit mit einem normalen Soll erzeugt dagegen nicht automatisch Überstunden.
+
+Die Sollstunden sind getrennt vom planbaren Zeitfenster. Ein längeres Fenster allein erzeugt noch keine Überstunden: Ein Vorhaben muss zugewiesen sein. Die Monatszelle kennzeichnet Mehrarbeit mit **⁺**; Tooltip, Personendetails, Gesamtzeile der Tafel, Besprechungsbericht und Druckzusammenfassung nennen die Stunden. Besprechungs-CSV und Arbeitszeiten-CSV enthalten Soll, planbare Stunden und geplante Überstunden. Der Tages-Einsatzexport unterscheidet Soll und Planfenster.
+
+- Überlappungen bleiben Konflikte. Solche Tage werden bis zur Klärung nicht in die Mehrstundensumme aufgenommen.
+- Abwesenheiten und zeitweise Abgaben erzeugen keine Überstunden. Ganztägige Urlaubsanträge verbrauchen höchstens die Sollstunden; das zusätzliche Überstundenfenster wird bei ganztägigem Urlaub nicht als freie Kapazität angeboten.
+- Kopieren, Buchstabeneingabe und Ausfüllen verwenden die Zeiten der Zielperson. Soll und Überstundenfenster werden nicht versehentlich mitkopiert.
+- Bestehende Tagesausnahmen ohne getrenntes Soll behalten aus Kompatibilitätsgründen ihre bisherige Stundenbasis. Beim Bearbeiten das Soll gezielt auf die gewünschte reguläre Tageszeit setzen. Bereits gespeicherte Daten werden nicht rückwirkend pauschal als Überstunden umgedeutet.
+- Die Personalimport-Vorlagen definieren weiterhin das reguläre Wochenmodell; datierte Mehrarbeit wird im Tagesdialog erfasst. JSON-Sicherung und gemeinsamer Datenstand enthalten die getrennten Sollstunden. Rückgängig und bestehende Bearbeitungssperren bleiben wirksam.
+
+Dies sind **geplante Mehrstunden je Tag**, kein Nachweis tatsächlich geleisteter Arbeit und kein fortlaufendes Zeitkonto mit Anfangssaldo, Übertrag oder Freizeitausgleich. Pausen werden weiterhin nicht automatisch abgezogen.
+
+Für Anpassungen im Code: `daySchedule[datum] = {start:'08:00', hours:10, targetHours:8}`. `targetOnDay()` liest das Soll, `workOnDay()` das Zeitfenster, `dayStats()` berechnet `overtime` aus konfliktfreien Vorhabenstunden über Soll. `summarize()` summiert diese Tageswerte; kürzere Tage verrechnen die Mehrstunden anderer Tage nicht stillschweigend.
