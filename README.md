@@ -90,3 +90,24 @@ Den Einsatz selbst ziehen verschiebt ihn über den bestehenden Prüfdialog;
 der kleine Griff kopiert auf weitere Tage. Rückgängig nimmt die komplette
 Ausfüllaktion zurück. Im Fileserverbetrieb anschließend gemeinsam speichern.
 Desktop verwendet natives Drag-and-drop, Touch/Stift den Pointer-Fallback.
+
+## Anrede im gesamten Datenfluss
+
+Einfache und erweiterte CSV-Vorlage sowie `beispiel_personal.csv` enthalten die
+Spalte Anrede. Vorschau zeigt Anrede getrennt vom Namen. Eine Vorgabe ist möglich,
+wenn die Anrede-Spalte fehlt. Explizit leere Anreden bleiben leer. Ohne Kopfzeile
+gilt weiterhin Name;Team;Wochenstunden;Beginn. Anreden werden nicht geraten.
+Anrede/Dienstgrad: bis 40 Zeichen, keine Zeilenumbrüche.
+
+Personenanzeigen, Auswahl, Suche, Vorhabenbesetzung, Kommentare und Druckberichte
+verwenden Anrede und Name. Alle drei CSV-Exporte führen Anrede als eigene Spalte.
+JSON und Fileserver behalten das Feld. Neue Urlaubsanträge speichern die Anrede
+zusätzlich als historischen Stand; bestehende Anträge werden nicht umgeschrieben.
+
+## Regel für künftige Datenmodelländerungen
+
+Neue Personen- oder Vorhabenfelder immer vollständig durchziehen: Erfassung,
+Importparser, beide Vorlagen, Beispieldateien, Importvorschau, Such-/Filterfelder,
+Auswahl und Detailanzeigen, Berichte/Druck, CSV/JSON, gemeinsamer Dateistand und
+Antragssnapshots. Bestehende Daten kompatibel halten. Tests müssen mindestens
+Vorlage → Import → Anzeige → Export prüfen; ein reiner Parser-Test genügt nicht.
