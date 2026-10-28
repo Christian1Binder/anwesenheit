@@ -45,7 +45,7 @@ console.log('PASS: vollständige/teilweise/flexible Besetzung, angrenzende Buchu
 assert.equal(run("view='month';boardCompact"),true);
 assert.throws(()=>run("makeQuickAssignment({...data,assignments:[]},'t','w','2026-10-26','morning')"));
 assert.throws(()=>run("makeQuickAssignment(data,'t','w','2026-10-26','full')"));
-assert.throws(()=>run("makeQuickAssignment({...data,assignments:[]},'t','w','2026-10-27','full')"));
+assert.equal(run("makeQuickAssignment({...data,assignments:[]},'t','w','2026-10-27','full').autoDay"),true);
 assert.throws(()=>run("makeQuickAssignment({...data,assignments:[{...a,mode:'morning'}]},'t','w','2026-10-26','afternoon')"));
 run("validateDayNotes({'2026-10-26':'Besprechung'})");
 assert.throws(()=>run("validateDayNotes({'2026-02-30':'Ungültig'})"));
@@ -85,8 +85,8 @@ console.log('PASS: Ganztage, eigene Kürzel, Demo ohne Teilbuchungen, Team-/Anre
 
 run("const fillPerson={...testPerson,schedule:Object.fromEntries([1,2,3,4,5].map(d=>[d,{start:'08:00',hours:8}]))};const fillData={...data,people:[fillPerson],assignments:[{...a,mode:'full'}]};");
 assert.equal(run("buildBoardFill(fillData,'a','2026-10-26','2026-10-30','t').items.length"),4);
-assert.equal(run("buildBoardFill(fillData,'a','2026-10-26','2026-11-02','t').items.length"),5);
-assert.equal(run("buildBoardFill(fillData,'a','2026-10-26','2026-11-02','t').skipped"),2);
+assert.equal(run("buildBoardFill(fillData,'a','2026-10-26','2026-11-02','t').items.length"),7);
+assert.equal(run("buildBoardFill(fillData,'a','2026-10-26','2026-11-02','t').skipped"),0);
 assert.equal(run("buildBoardFill(fillData,'a','2026-10-26','2026-10-26','t').items.length"),0);
 assert.throws(()=>run("buildBoardFill({...fillData,assignments:[...fillData.assignments,{...a,id:'busy',projectId:'u',mode:'full',start:'2026-10-27',end:'2026-10-27',days:[2]}]},'a','2026-10-26','2026-10-30','t')"));
 assert.throws(()=>run("buildBoardFill({...fillData,assignments:[{...a,mode:'full',requestId:'leave'}]},'a','2026-10-26','2026-10-30','t')"));
@@ -207,3 +207,42 @@ assert.equal(run("dayStats(db.people[0],db.assignments.filter(a=>a.personId==='m
 run('undo()');assert.equal(run("workOnDay(db.people[0],'2026-10-26').hours"),10);
 assert.throws(()=>run("db.people[0].daySchedule['2026-10-26'].targetHours=-1;validate(db)"));
 console.log('PASS: Überstunden werktags/Wochenende, Solltrennung, Dialog, keine Phantomstunden, Urlaub/Abgabe, Konflikte, Copy/Paste, Übersicht, CSV/JSON, Validierung und Undo.');
+// Direkte Zuweisung auf freie Kalendertage: keine Zeiteingabe vorausgesetzt.
+run("db=demoData();db.assignments=[];surface='board';anchor='2026-10-26';view='week';extraFilters={teams:[],salutations:[],categories:[],sort:''};typeProjectKey('K',{personId:'m0',index:5,day:'2026-10-31'});");
+// Eindeutig ausgewähltes Vorhaben über denselben zentralen Zuweisungsweg.
+run("db.assignments=[];db.people[0].daySchedule={};assignCellProject('p0',{personId:'m0',index:5,day:'2026-10-31'})");
+assert.equal(run("db.assignments.length"),1);
+assert.equal(run("workOnDay(db.people[0],'2026-10-31').targetHours"),0);
+assert.equal(run("workOnDay(db.people[0],'2026-10-31').automatic"),true);
+assert.equal(run("reportCache.get('m0').overtime"),8);
+assert(run("workLabel(db.people[0],'2026-10-31').includes('vorläufig')"));
+run("selectedBoardCell={personId:'m0',index:5};copySelectedCell();selectedBoardCell={personId:'m2',index:6};pasteSelectedCell()");
+assert.equal(run("workOnDay(db.people[2],'2026-11-01').hours"),4);
+assert.equal(run("reportCache.get('m2').overtime"),4);
+run("commit(x=>{x.assignments=x.assignments.filter(a=>a.personId!=='m2')})");
+assert.equal(run("workOnDay(db.people[2],'2026-11-01')"),undefined);
+run('undo()');assert.equal(run("workOnDay(db.people[2],'2026-11-01').hours"),4);
+run("const allWeekend=buildRectangleFill(db,db.assignments[0].id,'2026-10-31','2026-11-01','m1',['m0','m1']);commitCellItems(allWeekend,'Test')");
+assert.equal(run("db.assignments.filter(a=>a.personId==='m1').length"),2);
+assert.equal(run("reportCache.get('m1').overtime"),12);
+run("editDayTime('m0','2026-10-31')");node('#dayWork').value='work';node('#dayStart').value='08:00';node('#dayEnd').value='18:00';node('#dayTarget').value='0';node('#dayTimeForm').onsubmit({preventDefault(){}});
+assert.equal(run("workOnDay(db.people[0],'2026-10-31').hours"),10);
+assert.equal(run("workOnDay(db.people[0],'2026-10-31').automatic"),undefined);
+run("commit(x=>{x.assignments=x.assignments.filter(a=>a.personId!=='m0')})");
+assert.equal(run("workOnDay(db.people[0],'2026-10-31').hours"),10); // bewusste Zeit bleibt
+// Vorher ausdrücklich freier Tag wird bei Löschen wiederhergestellt.
+run("db.people[3].daySchedule={'2026-10-31':null};assignCellProject('p0',{personId:'m3',index:5,day:'2026-10-31'});commit(x=>{x.assignments=x.assignments.filter(a=>a.personId!=='m3')})");
+assert.equal(run("db.people[3].daySchedule['2026-10-31']"),null);
+// Alte Serien bleiben ohne automatische Wochenendaktivierung.
+run("db=demoData();db.assignments=[{...db.assignments[0],personId:'m0',start:'2026-10-31',end:'2026-10-31',days:[6]}];commit(x=>{x.people[0].name='Altbestand'})");
+assert.equal(run("workOnDay(db.people[0],'2026-10-31')"),undefined);
+assert.equal(run("reportCache.get('m0').booked"),0);
+// Tatsächliches Mehrfach-/Serienformular erzeugt ebenfalls die Automatik.
+ctx.FormData=class{get(k){return ({projectId:'p0',start:'2026-11-07',end:'2026-11-08',mode:'full',timeStart:'08:00',timeEnd:'16:00',load:'100',note:''})[k]??null}getAll(k){return k==='persons'?['m0','m2']:k==='days'?['6','0']:[]}};
+run("assignmentForm({personId:'m0',start:'2026-11-07',end:'2026-11-08'})");
+node('#assignmentForm').onsubmit({preventDefault(){}});
+assert.equal(run("workOnDay(db.people[0],'2026-11-07').hours"),8);
+assert.equal(run("workOnDay(db.people[2],'2026-11-08').hours"),4);
+run("anchor='2026-11-02';render();exportCSV('hours')");assert(run("exported.includes('Vorläufig automatisch')"));
+assert.equal(run("JSON.parse(JSON.stringify(snapshotData())).people[2].daySchedule['2026-11-08'].targetHours"),0);
+console.log('PASS: direkte Wochenendzuweisung, Copy/Paste, Rechteck, Mehrfach-/Serienformular, individuelle Vorgabe, automatische Mehrstunden, spätere Zeitänderung, Löschen/Undo, Altbestand und CSV/JSON.');
