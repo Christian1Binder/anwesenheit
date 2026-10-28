@@ -140,3 +140,11 @@ den gesamten Vorgang ab. Rückgängig nimmt die komplette Aktion zurück.
 - Beginn bis Feierabend zählt vollständig als Arbeitszeit, **ohne automatischen Pausenabzug**. Übernacht-Einsätze sind nicht enthalten; `24:00` ist als Tagesende möglich. Änderungen am regelmäßigen Wochenmodell wirken wie bisher auch auf vergangene Tage; für Einzeländerungen deshalb den Tagesdialog verwenden.
 
 **Code anpassen:** `workOnDay(person,datum)` ist die gemeinsame Quelle für Planung, Urlaub, Ausfüllen und Auswertungen. Beispiel einer lokalen Datums-Ausnahme: `person.daySchedule = {'2026-10-31': {start:'09:00', hours:5}}`. `null` steht für explizit arbeitsfrei; ohne Schlüssel gilt `schedule`. Endzeiten werden daraus abgeleitet, nicht doppelt gespeichert. Änderungen in der Oberfläche laufen über `commit()` und `setDayTime()`, damit Validierung und Rückgängig greifen. JSON-Sicherungen und gemeinsame Dateien enthalten die Ausnahmen; personenbezogene Daten bleiben lokal.
+
+### Vorhandenes Personal bearbeiten
+
+**Verwalten → Personal bearbeiten** öffnet die vollständige, durchsuchbare Personalliste. Die Suche berücksichtigt Namen, Anrede und Team; Filter der Personaltafel blenden hier niemanden aus. Alternativ auf der Personaltafel oder im Bericht den Namen anklicken und **Person bearbeiten** wählen.
+
+Im Formular lassen sich Anrede, Name, Team, Arbeitsbeginn, Stunden und Feierabend für Mo–So ändern. Speichern aktualisiert die Person unter derselben ID: Vorhaben, Kommentare, Tagesausnahmen und Anträge bleiben zugeordnet. Die Änderung erscheint in Ansichten, Filtern, CSV und JSON und lässt sich rückgängig machen. Historische Antragssnapshots bleiben als Nachweis unverändert. Ein Wochenmodell darf gebuchte Einsätze nicht durch arbeitsfreie Tage verschwinden lassen oder genehmigten Urlaub verändern. Einzelne abweichende Arbeitszeiten weiterhin über den Tagesdialog erfassen.
+
+Im gemeinsamen Betrieb zuerst als Planer die Bearbeitung übernehmen und anschließend gemeinsam speichern. Lokal den aktualisierten Datenstand als JSON sichern. Die Personalliste verwendet die vorhandenen Bearbeitungsrechte und Sperren; Nutzdaten werden nicht in den HTML-Code geschrieben.
