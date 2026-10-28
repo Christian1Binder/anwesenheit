@@ -687,6 +687,8 @@ header .brand img.logo{display:block;width:44px;height:44px;flex:0 0 44px;paddin
 
 /* Ruhige zweizeilige Navigation: Marke/Aktionen oben, Arbeitsbereiche darunter. */
 header,body[data-surface="board"] header{display:flex;flex-wrap:wrap;gap:0;padding:0 18px;background:#087f80;border:0;color:white}header .brand{padding:7px 0;gap:9px}header .brand h1{font-size:19px;color:white}header .brand small{display:none}header .brand img.logo{width:29px;height:29px;flex-basis:29px}header .head-actions{margin-left:auto;align-items:center;gap:5px}header .head-actions button{font-size:11px;padding:5px 9px;background:transparent;border-color:#ffffff40;color:white}header .head-actions .primary{background:white;color:#076b6c}header .workspace-tabs{order:3;flex:0 0 calc(100% + 36px);margin:0 -18px;padding:0 18px;background:white;border-bottom:1px solid #dce4e8;gap:25px}header .workspace-tabs button{font-size:11px;text-transform:uppercase;letter-spacing:.35px;padding:9px 0;color:#67778c}header .workspace-tabs button.active{color:#087f80}.share-bar{padding:6px 10px;margin:4px 0;font-size:11px}.share-bar small{display:none}.share-actions button{font-size:10px;padding:4px 7px}.notice{padding:3px 9px!important;margin:3px 0!important}.notice button{padding:3px 7px;font-size:10px}.board-top{margin:5px 0}.board-top h2{display:none}.board-top p{margin:0}.board-actions button{padding:5px 8px;font-size:11px}.filters{align-items:center;gap:6px;flex-wrap:wrap}.filters input,.filters select,.filters button{font-size:11px;padding:5px 8px}#extraFilterState{font-size:10px;color:#087f80}.filter-groups{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.filter-groups fieldset{max-height:320px;overflow:auto;border:1px solid #dce4e8;border-radius:8px}.filter-groups label{display:flex;align-items:center;gap:7px;margin:9px 0;font-size:13px}.filter-groups input{width:auto}#boardView .board-cell>button .mini-day{height:100%}#boardView .mini-slot{font-size:9px}.board-palette{margin:5px 0}#boardStamp,#boardFilters{font-size:10px}.board-scroll{max-height:calc(100vh - 260px)}@media(max-width:700px){.filter-groups{grid-template-columns:1fr}header .workspace-tabs{gap:12px}.share-actions{flex-wrap:wrap}}@media print{.board-scroll{max-height:none!important}}
+
+[data-project],[data-board-assignment],[data-assignment]{touch-action:none;user-select:none;cursor:grab}[data-project]:active,[data-board-assignment]:active{cursor:grabbing}.fill-grip{position:absolute;right:0;bottom:0;width:7px;height:7px;background:#063f40;border:1px solid white;z-index:6;cursor:crosshair;touch-action:none}.board-cell:has(.fill-grip){overflow:visible}.board-cell.dragover{outline:2px solid #087f80;outline-offset:-2px;background:#cfefea!important}.drag-source{opacity:.55}.is-dragging{user-select:none}.board-palette{position:sticky;bottom:0;background:#f4f6f8;padding:6px 0;z-index:7}@media print{.fill-grip{display:none!important}}
 </style>
 </head><body data-surface="board" data-print-kind="brief" data-preview="false">
 <!-- STARTDATEN: Für eigene Daten demo:false und eine eigene id setzen.
@@ -716,7 +718,7 @@ header,body[data-surface="board"] header{display:flex;flex-wrap:wrap;gap:0;paddi
     <div class="filters"><button id="tableFilters">Filter ▾</button><button id="resetFilters">Zurücksetzen</button><span id="extraFilterState"></span><input id="search" type="search" placeholder="Person suchen …" aria-label="Person suchen"><select id="teamFilter" aria-label="Team filtern"></select><select id="projectFilter" aria-label="Personen nach Vorhaben filtern"></select><select id="availability" aria-label="Belegung filtern"><option value="">Alle Belegungen</option><option value="free">Mit freier Kapazität</option><option value="over">Mit Konflikten</option></select></div>
     <!-- BESPRECHUNGSBERICHT: Inhalte werden aus denselben Daten wie der Plan erzeugt.
          Neue Berichtsspalten hier im thead UND in renderReport() ergänzen. -->
-<section id="boardView" aria-label="Personaltafel"><div class="board-top"><div><h2>Personaltafel</h2><p id="boardInfo"></p></div><div class="board-actions"><button id="quickAssign" class="primary">+ Zuweisung</button><button id="createBoardProject">+ Vorhaben</button><button id="copyWeek">Woche übernehmen</button><button id="boardImport" data-people-import hidden>Personal importieren</button><button id="halfToggle" aria-pressed="false">Halbtage</button><button id="boardCompact">Kompakte Zeilen</button><button id="boardMeeting">Besprechungsmodus</button><button id="boardPrint" class="primary">Drucken / PDF</button></div></div><div class="cell-tools"><span id="selectedCellLabel">Zelle anklicken · Doppelklick: zuweisen · Rechtsklick / Umschalt+F2: Kommentar</span><button id="selectedAssign">Zuweisen</button><button id="selectedComment">Kommentar</button></div><p id="boardStamp"></p><p id="boardFilters"></p><div class="board-legend"><span><b class="free">Frei</b> verfügbar</span><span><b class="detached">AB</b> abgegeben</span><span><b class="absence">U</b> Abwesenheit</span><span>Gestrichelt / ? = beantragt</span><span>Roter Rand / ! = Konflikt</span></div><div class="board-scroll"><table class="board-table" aria-label="Gesamte Personaleinteilung"><thead id="boardHead"></thead><tbody id="boardBody"></tbody></table></div><div id="boardProjects"></div><div id="dayNotePrint"></div><p class="board-explain">Ganze Arbeitstage · Eigene Kürzel stehen in der Legende · … = mehrere Vorhaben · * = ältere Teilzeitbuchung, unverändert erhalten · Violette Ecke = Zellkommentar.</p><details class="board-palette"><summary>Vorhaben zum Einplanen auf ein Zeitfeld ziehen</summary><div id="boardPalette"></div></details></section>
+<section id="boardView" aria-label="Personaltafel"><div class="board-top"><div><h2>Personaltafel</h2><p id="boardInfo"></p></div><div class="board-actions"><button id="quickAssign" class="primary">+ Zuweisung</button><button id="createBoardProject">+ Vorhaben</button><button id="copyWeek">Woche übernehmen</button><button id="boardImport" data-people-import hidden>Personal importieren</button><button id="halfToggle" aria-pressed="false">Halbtage</button><button id="boardCompact">Kompakte Zeilen</button><button id="boardMeeting">Besprechungsmodus</button><button id="boardPrint" class="primary">Drucken / PDF</button></div></div><div class="cell-tools"><span id="selectedCellLabel">Zelle anklicken · Doppelklick: zuweisen · Rechtsklick / Umschalt+F2: Kommentar</span><button id="selectedAssign">Zuweisen</button><button id="selectedComment">Kommentar</button></div><p id="boardStamp"></p><p id="boardFilters"></p><div class="board-legend"><span><b class="free">Frei</b> verfügbar</span><span><b class="detached">AB</b> abgegeben</span><span><b class="absence">U</b> Abwesenheit</span><span>Gestrichelt / ? = beantragt</span><span>Roter Rand / ! = Konflikt</span></div><div class="board-scroll"><table class="board-table" aria-label="Gesamte Personaleinteilung"><thead id="boardHead"></thead><tbody id="boardBody"></tbody></table></div><div id="boardProjects"></div><div id="dayNotePrint"></div><p class="board-explain">Vorhaben auf Zellen ziehen · Griff unten rechts: Tage ausfüllen · Eigene Kürzel stehen in der Legende · … = mehrere Vorhaben · * = ältere Teilzeitbuchung, unverändert erhalten · Violette Ecke = Zellkommentar.</p><details class="board-palette"><summary>Vorhaben zum Einplanen auf ein Zeitfeld ziehen</summary><div id="boardPalette"></div></details></section>
     <section id="projectOverview" hidden aria-label="Vorhaben und Personalbedarf"><div class="board-top"><div><h2>Vorhaben & Bedarf</h2><p>Wer arbeitet wo – und welche Besetzung fehlt?</p></div><button id="projectPrint">Drucken / PDF</button></div><div class="project-tools"><input id="projectSearch" type="search" placeholder="Vorhaben suchen …" aria-label="Vorhaben suchen"><span>Besetzung zählt vollständige, konfliktfreie Zeitfenster.</span></div><p id="projectOverviewStamp"></p><div class="project-overview-scroll"><table class="project-overview-table"><thead id="projectOverviewHead"></thead><tbody id="projectOverviewBody"></tbody></table></div><p class="help">Eine Zelle öffnet Personen und Uhrzeiten. Bedarf ist optional. Flexible Prozentbuchungen und Personen mit Tageskonflikten zählen nicht als vollständige Besetzung.</p></section>
     <section id="reportView">
       <div class="report-tools"><details class="custom-range"><summary>Eigenen Zeitraum wählen</summary><form id="rangeForm" class="range-form"><label>Bericht von<input type="date" id="rangeStart" required></label><label>bis einschließlich<input type="date" id="rangeEnd" required></label><button>Zeitraum anwenden</button></form></details><select id="printKind" aria-label="Druckumfang"><option value="brief">Kompaktes Besprechungsblatt</option><option value="full">Vollständige Personenübersicht</option></select><button id="previewBrief" type="button">Blatt ansehen</button><button id="printReport" type="button" class="primary">Drucken / PDF</button></div>
@@ -738,7 +740,7 @@ header,body[data-surface="board"] header{display:flex;flex-wrap:wrap;gap:0;paddi
 <dialog id="modal"><div id="modalBody"></div></dialog><input id="importFile" type="file" accept=".json,application/json" hidden><div id="toast" class="toast" role="status" hidden></div>
 
 <template id="manualContent">
-<article class="guide-article"><section><h2>Tagesplanung – aktuelle Bedienung</h2><p>Neue Zuweisungen und Urlaubsanträge belegen ausschließlich ganze individuelle Arbeitstage. Frühere Teilzeitbuchungen bleiben zur Nachvollziehbarkeit erhalten und sind in der Tafel mit * gekennzeichnet; beim Bearbeiten einer regulären Buchung wird diese auf ganze Tage umgestellt. Frühere Urlaubsentscheidungen werden ausschließlich über den Genehmigungsablauf geändert.</p><p><b>Vorhaben:</b> Name, eigenes eindeutiges Kürzel (max. 6 Zeichen), Farbe und eigene Art (z. B. Übung, Ausbildung, Dienstreise) festlegen. Zusätzlich bestimmt „Auswirkung auf Verfügbarkeit“, ob es als Vorhaben, Abwesenheit oder Abgabe zählt. Einstellungen sind über den Vorhabennamen unter „Vorhaben &amp; Bedarf“ änderbar. Bestehende Vorhaben ohne Kürzel zeigen die ersten vier Buchstaben bis zur eigenen Vergabe.</p><p><b>Personal:</b> Anrede ist frei eingebbar, auch als Dienstgrad. Im CSV-Import ist die optionale Spalte „Anrede“ mit Kopfzeile möglich. Namen und Anrede werden getrennt gespeichert.</p><p><b>Filter:</b> „Filter ▾“ oder „Person / Team ▾“ öffnet Mehrfachauswahl für Teams, Anreden und Vorhabenarten sowie Sortierung A–Z/Z–A. Innerhalb einer Gruppe gilt ODER, zwischen Gruppen UND. Suche und die direkten Filter gelten zusätzlich. „Zurücksetzen“ entfernt alle Filter. Gedruckt wird die gefilterte Personenauswahl.</p><p><b>Zellen:</b> Klick wählt aus, Pfeiltasten bewegen die Auswahl, Doppelklick oder Enter öffnet die Tageszuweisung. Rechtsklick oder Umschalt+F2 öffnet den Kommentar für Person und Tag. Die violette Ecke markiert einen Kommentar. Gedruckte Kommentare stehen mit Name und Datum unter der Tafel.</p><p>„Daten speichern“ erzeugt eine lokale JSON-Sicherung. Code bleibt getrennt von Nutzdaten. Keine Netzwerkübertragung. Die Wochenübernahme erzeugt nur ganze Tage und prüft Konflikte und Duplikate.</p></section>
+<article class="guide-article"><section><h2>Tagesplanung – aktuelle Bedienung</h2><p><b>Ziehen:</b> Vorhaben aus der Palette auf einen Tag ziehen. Am Einsatz den kleinen Griff unten rechts bis zum letzten gewünschten Tag ziehen, um freie Arbeitstage derselben Person auszufüllen. Andere Belegungen brechen den gesamten Vorgang ab; arbeitsfreie Tage werden übersprungen. Rückgängig nimmt die ganze Aktion zurück. Den Einsatz selbst ziehen öffnet den Verschiebedialog. Genehmigter Urlaub bleibt geschützt.</p><p>Neue Zuweisungen und Urlaubsanträge belegen ausschließlich ganze individuelle Arbeitstage. Frühere Teilzeitbuchungen bleiben zur Nachvollziehbarkeit erhalten und sind in der Tafel mit * gekennzeichnet; beim Bearbeiten einer regulären Buchung wird diese auf ganze Tage umgestellt. Frühere Urlaubsentscheidungen werden ausschließlich über den Genehmigungsablauf geändert.</p><p><b>Vorhaben:</b> Name, eigenes eindeutiges Kürzel (max. 6 Zeichen), Farbe und eigene Art (z. B. Übung, Ausbildung, Dienstreise) festlegen. Zusätzlich bestimmt „Auswirkung auf Verfügbarkeit“, ob es als Vorhaben, Abwesenheit oder Abgabe zählt. Einstellungen sind über den Vorhabennamen unter „Vorhaben &amp; Bedarf“ änderbar. Bestehende Vorhaben ohne Kürzel zeigen die ersten vier Buchstaben bis zur eigenen Vergabe.</p><p><b>Personal:</b> Anrede ist frei eingebbar, auch als Dienstgrad. Im CSV-Import ist die optionale Spalte „Anrede“ mit Kopfzeile möglich. Namen und Anrede werden getrennt gespeichert.</p><p><b>Filter:</b> „Filter ▾“ oder „Person / Team ▾“ öffnet Mehrfachauswahl für Teams, Anreden und Vorhabenarten sowie Sortierung A–Z/Z–A. Innerhalb einer Gruppe gilt ODER, zwischen Gruppen UND. Suche und die direkten Filter gelten zusätzlich. „Zurücksetzen“ entfernt alle Filter. Gedruckt wird die gefilterte Personenauswahl.</p><p><b>Zellen:</b> Klick wählt aus, Pfeiltasten bewegen die Auswahl, Doppelklick oder Enter öffnet die Tageszuweisung. Rechtsklick oder Umschalt+F2 öffnet den Kommentar für Person und Tag. Die violette Ecke markiert einen Kommentar. Gedruckte Kommentare stehen mit Name und Datum unter der Tafel.</p><p>„Daten speichern“ erzeugt eine lokale JSON-Sicherung. Code bleibt getrennt von Nutzdaten. Keine Netzwerkübertragung. Die Wochenübernahme erzeugt nur ganze Tage und prüft Konflikte und Duplikate.</p></section>
 <p class="callout"><b>Teamplan auf dem Fileserver</b><br>Eine Person bearbeitet den Hauptplan. Andere können währenddessen eigene Urlaubsanträge ablegen. Die Rollen gelten gemäß eurer Weisung. Da alle Schreibrechte haben, ist die Rollenauswahl eine Bedienhilfe und keine Zugriffssperre.</p>
 <nav class="guide-nav"><a href="#guide-first">Erste Nutzung</a><a href="#guide-member">Urlaub beantragen</a><a href="#guide-planner">Anträge entscheiden</a><a href="#guide-rules">Arbeitsregeln</a><a href="#guide-recovery">Probleme & Sicherungen</a></nav>
 <section id="guide-first"><h2>1 · Erste Nutzung: einmal vorbereiten, dann gemeinsam starten</h2>
@@ -1005,7 +1007,7 @@ function persist() {
   if(shared.dir){cacheSharedDraft();render();return;}
   try {
     localStorage.setItem('teamplan:'+db.id,JSON.stringify(db));
-    $('#status').textContent='Im Browser zwischengespeichert · HTML-Datei noch nicht aktualisiert.';
+    $('#status').textContent='Im Browser zwischengespeichert · JSON-Datei noch nicht gesichert.';
   } catch(e) { $('#status').textContent='Browser-Speicherung nicht verfügbar. Bitte als JSON sichern.'; }
   render();
 }
@@ -1067,7 +1069,7 @@ function render() {
   $('#periodTitle').textContent=view==='year'&&!customRange?date(anchor).getUTCFullYear():title;
   $('#printHeading').textContent='Personalplanung · '+title;
   $('#rangeStart').value=range.start;$('#rangeEnd').value=range.end;
-  $('#projects').innerHTML=db.projects.map(p=>`<div class="project" draggable="false" data-project="${esc(p.id)}" style="--p:${p.color}"><div class="name">${esc([p.salutation,p.name].filter(Boolean).join(' '))}<small>${p.kind!=='work'?esc(kindLabel(p))+' · ':''}${db.people.filter(person=>reportCache.get(person.id).byProject[p.id]>0).length} Personen</small></div><button data-edit-project="${esc(p.id)}" aria-label="${esc([p.salutation,p.name].filter(Boolean).join(' '))} bearbeiten">✎</button></div>`).join('')||'<p class="help">Noch keine Vorhaben.</p>';
+  $('#projects').innerHTML=db.projects.map(p=>`<div class="project" draggable="true" data-project="${esc(p.id)}" style="--p:${p.color}"><div class="name">${esc([p.salutation,p.name].filter(Boolean).join(' '))}<small>${p.kind!=='work'?esc(kindLabel(p))+' · ':''}${db.people.filter(person=>reportCache.get(person.id).byProject[p.id]>0).length} Personen</small></div><button data-edit-project="${esc(p.id)}" aria-label="${esc([p.salutation,p.name].filter(Boolean).join(' '))} bearbeiten">✎</button></div>`).join('')||'<p class="help">Noch keine Vorhaben.</p>';
   if(surface==='board')renderBoard(people,range);
   if(surface==='report') renderReport(people,range); else if(surface==='plan')renderPlan(people);
   $('#requestsView').hidden=surface!=='requests';
@@ -1152,7 +1154,7 @@ function renderPlan(people) {
     let chips='';
     if(view==='week') chips=entries.sort((a,b)=>(a.from??1500)-(b.from??1500)).map(e=>{
       const pr=db.projects.find(p=>p.id===e.a.projectId);
-      return `<button class="chip" draggable="false" data-assignment="${esc(e.a.id)}" data-source-day="${b.start}" style="--p:${pr.color}" title="${esc(pr.name)} · ${esc(assignmentLabel(e.a))}"><strong>${esc(pr.name)}</strong><small>${e.from===null?'Flexibel':clock(e.from)+'–'+clock(e.to)}<br>${number(e.hours)}&nbsp;h</small></button>`;
+      return `<button class="chip" draggable="true" data-assignment="${esc(e.a.id)}" data-source-day="${b.start}" style="--p:${pr.color}" title="${esc(pr.name)} · ${esc(assignmentLabel(e.a))}"><strong>${esc(pr.name)}</strong><small>${e.from===null?'Flexibel':clock(e.from)+'–'+clock(e.to)}<br>${number(e.hours)}&nbsp;h</small></button>`;
     }).join('');
     else chips=Object.entries(s.byProject).map(([id,h])=>{
       const pr=db.projects.find(p=>p.id===id);
@@ -1775,9 +1777,11 @@ $('#gridBody').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&
 // Für empfindlichere Bedienung den Schwellwert 6 ändern; nicht auf 0 setzen.
 let pointerDrag=null, suppressDragClick=false;
 function dropOnCell(source,c) {
+  if(source.fill){applyBoardFill(source,c);return;}
   if(source.id&&db.assignments.find(a=>a.id===source.id)?.requestId){reviewRequest(db.assignments.find(a=>a.id===source.id).requestId);return;}
   if(!requirePlanEdit())return;
   const b=(c.dataset.boardTarget?boardBuckets():buckets())[Number(c.dataset.bucket)];
+  if(!source.id&&c.dataset.boardTarget&&b.start===b.end){try{const item=makeQuickAssignment(db,c.dataset.cellPerson,source.projectId,b.start,'full');commit(x=>x.assignments.push(item));toast('Vorhaben zugewiesen · Rückgängig ist möglich.')}catch(err){toast(err.message)}return}
   if(!source.id){assignmentForm({projectId:source.projectId,personId:c.dataset.cellPerson,start:b.start,end:b.end,...(b.half===undefined?{}:{mode:b.half?'afternoon':'morning'})});return}
   const a=db.assignments.find(a=>a.id===source.id),shift=Math.round((date(b.start)-date(source.day))/86400000);
   const shiftedDays=a.days.map(d=>(d+shift%7+7)%7);
@@ -1787,10 +1791,10 @@ function dropOnCell(source,c) {
   $('#moveSeries').onclick=()=>{close();assignmentForm({id:a.id,personId:c.dataset.cellPerson,start:add(a.start,shift),end:add(a.end,shift),days:shiftedDays})};
 }
 document.addEventListener('pointerdown',e=>{
-  if(!canEditPlan()||e.button!==0||e.target.closest('[data-edit-project]'))return;
-  const el=e.target.closest('[data-assignment],[data-project]');if(!el||!['plan','board'].includes(surface))return;
-  pointerDrag={el,pointerId:e.pointerId,x:e.clientX,y:e.clientY,active:false,source:el.dataset.assignment?{id:el.dataset.assignment,day:el.dataset.sourceDay}:{projectId:el.dataset.project}};
-  el.setPointerCapture(e.pointerId);
+  if(e.pointerType==='mouse'||!canEditPlan()||e.button!==0||e.target.closest('[data-edit-project]'))return;
+  const el=e.target.closest('[data-fill-id],[data-board-assignment],[data-assignment],[data-project]');if(!el||!['plan','board'].includes(surface))return;
+  pointerDrag={el,pointerId:e.pointerId,x:e.clientX,y:e.clientY,active:false,source:dragSource(el)};
+  e.preventDefault();el.setPointerCapture(e.pointerId);
 });
 document.addEventListener('pointermove',e=>{
   const d=pointerDrag;if(!d||d.pointerId!==e.pointerId)return;
@@ -1890,11 +1894,14 @@ function renderBoard(people,range){
     const segments=projects.map(([id,h])=>{const pr=db.projects.find(q=>q.id===id),label=boardCode(pr);return `<span class="board-seg ${pr.kind}" style="flex:${h/denom};--project:${pr.color}">${esc(label)}</span>`}).join('');
     const freeSeg=s.free>0?`<span class="board-seg free" style="flex:${s.free/denom}">${view==='week'?number(s.free)+' h frei':''}</span>`:'';
     const note=view==='week'?projects.map(([id])=>{const pr=db.projects.find(q=>q.id===id);return pr.name}).join(' / ')+(s.entries?.length?' · '+s.entries.map(e=>e.from===null?'flex.':clock(e.from)+'–'+clock(e.to)).join(', '):''):'';
-    return `<td class="board-cell ${s.conflicts.length?'conflict':''} ${requested?'requested':''} ${!s.capacity?'off':''}" data-cell-person="${esc(p.id)}" data-bucket="${i}" data-board-target="true"><button data-board-detail="${esc(p.id)}" data-board-index="${i}" title="${esc(title+cellNoteTooltip(p.id,b))}" aria-label="${esc(title+cellNoteTooltip(p.id,b))}">${cellNoteMarker(p.id,b)}${compactCellBody(p,b,s,workCellBody(p,b,s,`<span class="board-stack">${segments}${freeSeg}${!s.booked&&!s.capacity?'<span class="board-no-work">–</span>':''}</span>${note?'<span class="board-caption">'+esc(note)+'</span>':''}`))}${s.conflicts.length?'<b class="board-flag">!</b>':''}${requested?'<b class="board-pending">?</b>':''}</button></td>`;
+    const dayEntries=s.days.flatMap(d=>d.entries),editableEntry=b.start===b.end&&dayEntries.length===1&&dayEntries[0].a.mode==='full'&&!dayEntries[0].a.requestId&&canEditPlan()?dayEntries[0].a:null;
+    const dragAttrs=editableEntry?`draggable="true" data-board-assignment="${esc(editableEntry.id)}" data-source-day="${b.start}"`:'';
+    const grip=editableEntry?`<span class="fill-grip" draggable="true" data-fill-id="${esc(editableEntry.id)}" data-source-day="${b.start}" title="Vorhaben auf weitere Tage ziehen" aria-hidden="true"></span>`:'';
+    return `<td class="board-cell ${s.conflicts.length?'conflict':''} ${requested?'requested':''} ${!s.capacity?'off':''}" data-cell-person="${esc(p.id)}" data-bucket="${i}" data-board-target="true"><button ${dragAttrs} data-board-detail="${esc(p.id)}" data-board-index="${i}" title="${esc(title+cellNoteTooltip(p.id,b))}" aria-label="${esc(title+cellNoteTooltip(p.id,b))}">${cellNoteMarker(p.id,b)}${compactCellBody(p,b,s,workCellBody(p,b,s,`<span class="board-stack">${segments}${freeSeg}${!s.booked&&!s.capacity?'<span class="board-no-work">–</span>':''}</span>${note?'<span class="board-caption">'+esc(note)+'</span>':''}`))}${s.conflicts.length?'<b class="board-flag">!</b>':''}${requested?'<b class="board-pending">?</b>':''}${grip}</button></td>`;
   }).join('')+'<td class="board-total">'+number(reportCache.get(p.id).free)+'</td></tr>').join('')||'<tr><td colspan="'+(bs.length+2)+'">Keine Personen für diese Filter.</td></tr>';
   $('#boardProjects').innerHTML=db.projects.map(p=>`<span class="board-key" style="--project:${p.kind==='detached'?'#18202b':p.color}"><b>${boardCode(p)}</b> ${esc([p.salutation,p.name].filter(Boolean).join(' '))}${p.kind==='detached'?' · AB':p.kind==='absence'?' · U':''}</span>`).join('');
   renderNotePrint();
-  $('#boardPalette').innerHTML=db.projects.filter(p=>!p.system).map(p=>`<div class="project" data-project="${esc(p.id)}" style="--p:${p.color}">${esc([p.salutation,p.name].filter(Boolean).join(' '))}</div>`).join('');
+  $('#boardPalette').innerHTML=db.projects.filter(p=>!p.system).map(p=>`<div class="project" draggable="true" data-project="${esc(p.id)}" style="--p:${p.color}">${esc([p.salutation,p.name].filter(Boolean).join(' '))}</div>`).join('');
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
@@ -2195,6 +2202,49 @@ function tableFilters(){
  $('#tableFilterForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);extraFilters={teams:f.getAll('teams'),salutations:f.getAll('salutations'),categories:f.getAll('categories'),sort:f.get('sort')};close();render()};
 }
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(['tableFilters','columnFilter'].includes(b.id))tableFilters();if(b.id==='resetFilters'){for(const id of ['search','teamFilter','projectFilter','availability'])$('#'+id).value='';extraFilters={teams:[],salutations:[],categories:[],sort:''};render()}});
+
+
+/* DESKTOP: native HTML-Drag-and-drop. Touch/Stift: Pointer-Fallback oben.
+   Griff kopiert ganze Tageszuweisungen in derselben Personenzeile. Ein commit
+   macht den gesamten Vorgang rückgängig. Kommentare werden niemals mitkopiert.
+   Keine Änderung an genehmigten Urlaubsbuchungen, kein Überschreiben anderer Einsätze. */
+function dragSource(el){return el.dataset.fillId?{id:el.dataset.fillId,day:el.dataset.sourceDay,fill:true}:el.dataset.boardAssignment||el.dataset.assignment?{id:el.dataset.boardAssignment||el.dataset.assignment,day:el.dataset.sourceDay}:{projectId:el.dataset.project}}
+function buildBoardFill(data,id,sourceDay,targetDay,personId){
+ const a=data.assignments.find(x=>x.id===id),p=data.people.find(x=>x.id===personId);
+ if(!a||!p||a.personId!==personId||a.requestId||a.mode!=='full'||!validDate(sourceDay)||!validDate(targetDay)||!occurrence(a,p,sourceDay))throw Error('Nur ganze Einsätze innerhalb derselben Personenzeile weiterziehen.');
+ const start=sourceDay<targetDay?sourceDay:targetDay,end=sourceDay>targetDay?sourceDay:targetDay;
+ if(date(end)-date(start)>366*86400000)throw Error('Höchstens ein Jahr auf einmal ausfüllen.');
+ const items=[];let skipped=0;
+ for(let day=start;day<=end;day=add(day,1)){
+  if(!p.schedule[date(day).getUTCDay()]){skipped++;continue}
+  const current=data.assignments.filter(x=>x.personId===personId),stats=dayStats(p,current,day,data.projects);
+  if(stats.conflict)throw Error(fullDate(day)+': bestehender Konflikt. Nichts übernommen.');
+  if(stats.entries.some(e=>e.a.projectId===a.projectId&&e.a.mode==='full'))continue;
+  if(stats.entries.length)throw Error(fullDate(day)+': bereits anders belegt. Nichts übernommen.');
+  items.push({...a,id:uid(),start:day,end:day,days:[date(day).getUTCDay()]});
+ }
+ return {items,skipped};
+}
+function applyBoardFill(source,cell){
+ if(!requirePlanEdit())return;
+ const b=boardBuckets()[Number(cell.dataset.bucket)];
+ if(!cell.dataset.boardTarget||!b||b.start!==b.end){toast('Weiterziehen ist in Woche und Monat möglich.');return}
+ try{const result=buildBoardFill(db,source.id,source.day,b.start,cell.dataset.cellPerson);if(!result.items.length){toast('Keine neuen Tage: bereits belegt oder arbeitsfrei.');return}commit(x=>x.assignments.push(...result.items));toast(result.items.length+' Tage zugewiesen'+(result.skipped?' · '+result.skipped+' arbeitsfreie Tage übersprungen':'')+' · Rückgängig möglich.')}catch(e){toast(e.message)}
+}
+let nativeDrag=null;
+document.addEventListener('dragstart',e=>{
+ const el=e.target.closest('[data-fill-id],[data-board-assignment],[data-assignment],[data-project]');
+ if(!el||!canEditPlan()||e.target.closest('[data-edit-project]')){e.preventDefault();return}
+ nativeDrag=dragSource(el);e.dataTransfer.effectAllowed=nativeDrag.fill||nativeDrag.projectId?'copy':'move';e.dataTransfer.setData('text/plain','teamplan-internal');el.classList.add('drag-source');document.body.classList.add('is-dragging');
+});
+document.addEventListener('dragover',e=>{
+ if(!nativeDrag)return;const cell=e.target.closest('[data-cell-person]');if(!cell)return;e.preventDefault();e.dataTransfer.dropEffect=nativeDrag.fill||nativeDrag.projectId?'copy':'move';
+ document.querySelectorAll('.dragover').forEach(x=>x.classList.remove('dragover'));cell.classList.add('dragover');
+ const scroller=cell.closest('.board-scroll');if(scroller){const rect=scroller.getBoundingClientRect();if(e.clientX>rect.right-35)scroller.scrollLeft+=18;if(e.clientX<rect.left+35)scroller.scrollLeft-=18;if(e.clientY>rect.bottom-30)scroller.scrollTop+=15;if(e.clientY<rect.top+35)scroller.scrollTop-=15}
+});
+function clearNativeDrag(){nativeDrag=null;document.querySelectorAll('.dragover,.drag-source').forEach(x=>{x.classList.remove('dragover');x.classList.remove('drag-source')});document.body.classList.remove('is-dragging')}
+document.addEventListener('drop',e=>{if(!nativeDrag)return;e.preventDefault();const source=nativeDrag,cell=e.target.closest('[data-cell-person]');clearNativeDrag();suppressDragClick=true;setTimeout(()=>suppressDragClick=false,250);if(cell)dropOnCell(source,cell)});
+document.addEventListener('dragend',clearNativeDrag);
 
 // INITIALISIERUNG: Eingebettete Daten bleiben die Rückfallebene. Ein gespeicherter
 // Browserstand wird erst nach erfolgreicher Migration und Validierung übernommen.
