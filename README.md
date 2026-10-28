@@ -74,3 +74,19 @@ simulierter Datei-I/O. Kein Ersatz für einen Edge-/SMB-Test vor Ort.
 `teamplan-logo.svg` ist das skalierbare Original: Personenpunkte und Planungsbalken
 in Türkis. Kopfbereich und Browser-Tab verwenden dasselbe direkt eingebettete SVG.
 Die HTML-Datei bleibt damit ohne weitere Dateien offline nutzbar.
+
+## Ziehen und Ausfüllen
+
+Vorhaben aus der Palette auf einen Tag ziehen: direkte Ganztagszuweisung,
+mit Konfliktprüfung. In Woche/Monat besitzen eindeutige ganztägige Einsätze
+unten rechts einen Ausfüllgriff. Diesen innerhalb derselben Personenzeile
+auf den letzten gewünschten Tag ziehen. Freie Arbeitstage werden ausgefüllt,
+arbeitsfreie Tage übersprungen. Andere Belegungen brechen den gesamten Vorgang
+ab; nichts wird überschrieben. Rückwärtsziehen füllt frühere Tage ebenfalls aus.
+Bestehende gleiche Ganztagszuweisungen werden nicht dupliziert. Zellkommentare
+bleiben an ihrem ursprünglichen Tag. Genehmigter Urlaub ist nicht ziehbar.
+
+Den Einsatz selbst ziehen verschiebt ihn über den bestehenden Prüfdialog;
+der kleine Griff kopiert auf weitere Tage. Rückgängig nimmt die komplette
+Ausfüllaktion zurück. Im Fileserverbetrieb anschließend gemeinsam speichern.
+Desktop verwendet natives Drag-and-drop, Touch/Stift den Pointer-Fallback.
