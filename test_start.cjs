@@ -157,3 +157,27 @@ assert.equal(run("workOnDay(db.people[0],'2026-10-31').hours"),8);
 run('undo()');assert.equal(run("workOnDay(db.people[0],'2026-10-31').hours"),7);
 assert.throws(()=>run("db.people[0].daySchedule['2026-11-01']={start:'23:00',hours:8};validate(db)"));
 console.log('PASS: Feierabend-Dialog, Wochenendausnahme, Ganztag, Rechteck, Copy/Paste, Datumstreue, Rückgängig, Urlaubs-/Einsatzschutz, CSV und JSON.');
+// Erreichbarkeit und echtes Speichern des Personenformulars über seine Ereignisse.
+run("db=demoData();db.assignments=[];db.cellNotes={m0:{'2026-10-26':'Bleibt'}};db.people[0].daySchedule={'2026-10-31':{start:'09:00',hours:5}};db.assignments.push(makeQuickAssignment(db,'m0','p0','2026-10-26','full'));surface='board';render();personDetail('m0');");
+assert(node('#modalBody').innerHTML.includes('data-person="m0">Person bearbeiten'));
+run('administration()');assert(node('#modalBody').innerHTML.includes('data-admin="people"'));
+run('managePeople()');node('#managePeopleSearch').value='Beispielperson 01';node('#managePeopleSearch').oninput();
+assert(node('#managePeopleList').innerHTML.includes('data-person="m0"'));
+assert(!node('#managePeopleList').innerHTML.includes('data-person="m1"'));
+const personFields={name:{value:'Geändert'},salutation:{value:'Frau'},team:{value:'Neues Team'}};
+for(let d=0;d<7;d++){personFields['start'+d]={value:'08:00'};personFields['hours'+d]={value:d>0&&d<6?'8':'0'};personFields['end'+d]={value:d>0&&d<6?'16:00':''}}
+node('#personForm').elements=personFields;
+ctx.FormData=class{constructor(form){this.form=form}get(key){return this.form.elements[key]?.value||''}};
+run("editPerson('m0')");assert(node('#modalBody').innerHTML.includes('name="salutation"'));
+node('#personForm').onsubmit({preventDefault(){},target:node('#personForm')});
+assert.equal(run('db.people[0].name'),'Geändert');assert.equal(run('db.people[0].salutation'),'Frau');assert.equal(run('db.people[0].team'),'Neues Team');
+assert.equal(run('db.assignments[0].personId'),'m0');assert.equal(run("db.cellNotes.m0['2026-10-26']"),'Bleibt');
+assert.equal(run("db.people[0].daySchedule['2026-10-31'].hours"),5);
+assert(node('#boardBody').innerHTML.includes('Frau Geändert'));
+run("exportCSV('overview')");assert(run("exported.includes('Geändert')&&exported.includes('Neues Team')"));
+assert.equal(run('JSON.parse(JSON.stringify(snapshotData())).people[0].name'),'Geändert');
+run('undo()');assert.equal(run('db.people[0].name'),'Beispielperson 01');
+assert.throws(()=>run("updatePerson(db,{...db.people[0],schedule:{2:{start:'08:00',hours:8}}})"),/Einsatz/);
+run("db.assignments[0].requestId='approval'");
+assert.throws(()=>run("updatePerson(db,{...db.people[0],schedule:{...db.people[0].schedule,1:{start:'08:00',hours:4}}})"),/Urlaub/);
+console.log('PASS: Bearbeiten erreichbar, Personalliste/Suche, echtes Formularspeichern, Stammdaten in Tafel/CSV/JSON, stabile IDs/Notizen/Ausnahmen, Rückgängig und Belegungsschutz.');
