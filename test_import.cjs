@@ -21,3 +21,13 @@ for(const m of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g))if(!m[1].in
 console.log('PASS: CSV/TSV, BOM und sep=, Dezimalkomma, Umlaute, quoted Felder, Namenslisten, Vor-/Nachnamen, individuelle Wochenmodelle, Dopplungen, fehlerhafte Daten, Importlimit, vollständige JS-Syntax.');
 r=parse('Name;Anrede;Team;Wochenstunden;Beginn\nMustermann;Herr;Nord;40;08:00');assert.equal(r[0].person.salutation,'Herr');
 console.log('PASS: CSV-Anrede wird getrennt vom Namen übernommen.');
+ctx.download=(content)=>{ctx.downloaded=content};
+run('peopleImportTemplate(false)');r=parse(ctx.downloaded);assert.equal(r[0].person.salutation,'Frau');assert.equal(r[1].person.salutation,'Herr');assert(r.every(x=>!x.error));
+run('peopleImportTemplate(true)');r=parse(ctx.downloaded);assert.equal(r[0].person.salutation,'Frau');assert(r.every(x=>!x.error));
+ctx.options.salutation='Herr';r=parse('Name;Team\nAlex;Nord');assert.equal(r[0].person.salutation,'Herr');
+r=parse('Anrede;Name;Team\n;Alex;Nord');assert.equal(r[0].person.salutation,'');
+r=parse('Name;Dienstgrad\nAlex;Hauptmann');assert.equal(r[0].person.salutation,'Hauptmann');
+r=parse('Anrede;Name\n'+ 'A'.repeat(41)+';Alex');assert(r[0].error);
+r=parse('Anrede;Name\n"Frau\nHerr";Alex');assert(r[0].error);
+r=parse('Anrede\tName\tTeam\nFrau\tMuster\tNord');assert.equal(r[0].person.salutation,'Frau');
+console.log('PASS: beide echten Vorlagen importiert, Vorgabe, explizit leer, Dienstgrad, TSV und fehlerhafte Anreden.');
