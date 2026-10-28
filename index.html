@@ -1183,19 +1183,40 @@ function renderPlan(people) {
 
 // Wochenmodell: Stunden je Wochentag dürfen unterschiedlich sein. Ein Tag mit
 // 0 Stunden wird nicht gespeichert. 30 h/Woche können z.B. 3 × 10 h sein.
+/* Stammdaten behalten ihre ID: Einsätze, Kommentare und Tagesausnahmen
+   bleiben zugeordnet. Historische Antragssnapshots werden nicht umgeschrieben.
+   Neue Personenfelder hier über item übernehmen und in Import/Export prüfen. */
+function updatePerson(data,item){
+ const index=data.people.findIndex(p=>p.id===item.id);if(index<0)throw Error('Person nicht mehr vorhanden.');
+ const old=data.people[index];
+ if(JSON.stringify(old.schedule)!==JSON.stringify(item.schedule)){
+   for(const a of data.assignments.filter(a=>a.personId===item.id))for(let day=a.start;day<=a.end;day=add(day,1)){
+     const before=occurrence(a,old,day),after=occurrence(a,item,day);
+     if(before&&!after)throw Error('Am '+fullDate(day)+' besteht ein Einsatz. Zuerst verschieben oder entfernen, bevor der Tag arbeitsfrei wird.');
+     if(a.requestId&&JSON.stringify(before)!==JSON.stringify(after))throw Error('Das Wochenmodell verändert genehmigten Urlaub am '+fullDate(day)+'. Zuerst den Antrag klären.');
+   }
+ }
+ data.people[index]=item;
+}
+function managePeople(){
+ modal('<h2>Personal bearbeiten</h2><label class="field">Person suchen<input id="managePeopleSearch" type="search" placeholder="Name, Anrede oder Team"></label><p class="help">Alle Personen, unabhängig von den Filtern der Personaltafel. Bearbeiten erhält bestehende Einsätze und Kommentare.</p><div id="managePeopleList" class="detail-list"></div><div class="dialog-actions"><button data-close>Schließen</button><button data-admin="person">Person hinzufügen</button><button data-people-import>Personal importieren</button></div>');
+ const list=()=>{const query=$('#managePeopleSearch').value.trim().toLocaleLowerCase('de');const people=db.people.filter(p=>(personDisplayName(p)+' '+p.team).toLocaleLowerCase('de').includes(query)).sort((a,b)=>a.name.localeCompare(b.name,'de'));$('#managePeopleList').innerHTML=people.map(p=>'<button class="detail-entry" data-person="'+esc(p.id)+'" '+(!canEditPlan()?'disabled':'')+'><strong>'+esc(personDisplayName(p))+'</strong><small>'+esc(p.team||'Ohne Team')+' · '+number(weeklyHours(p))+' h/Woche · Bearbeiten</small></button>').join('')||'<p>Keine Personen gefunden.</p>'};
+ $('#managePeopleSearch').oninput=list;list();
+}
 function editPerson(id) {
   if(!requirePlanEdit())return;
+  if(id&&!db.people.some(p=>p.id===id)){toast('Diese Person ist nicht mehr vorhanden.');return}
   const p=db.people.find(p=>p.id===id)||{name:'',team:'',schedule:Object.fromEntries([1,2,3,4,5].map(d=>[d,{start:'08:00',hours:8}]))};
-  modal(`<h2>${id?'Person bearbeiten':'Person hinzufügen'}</h2><form id="personForm"><label class="field">Anrede<input name="salutation" maxlength="40" list="salutations" value="${esc(p.salutation||'')}" placeholder="z. B. Herr, Frau oder Dienstgrad"><datalist id="salutations"><option>Herr</option><option>Frau</option></datalist></label><label class="field">Name<input name="name" required maxlength="100" value="${esc(p.name)}"></label><label class="field">Team<input name="team" maxlength="100" value="${esc(p.team)}"></label><h3>Individuelle Arbeitswoche</h3><p class="help">Je Tag Beginn, Stunden oder Feierabend ändern. Beginn + Stunden = Feierabend, ohne automatischen Pausenabzug. 0 Stunden = arbeitsfrei. Samstag und Sonntag sind frei planbar. Einzelne Datums-Ausnahmen über die Tageszelle ändern. Ein ganzer Tag belegt die vollständige individuelle Tagesarbeitszeit. Änderungen gelten auch für vergangene Auswertungen.</p><div class="schedule-grid"><b>Tag</b><b>Beginn</b><b>Stunden</b><b>Feierabend</b>${[1,2,3,4,5,6,0].map(d=>`<label for="hours${d}">${DAY_NAMES[d]}</label><input aria-label="${DAY_NAMES[d]} Beginn" type="time" name="start${d}" value="${p.schedule[d]?.start||'08:00'}" required><input id="hours${d}" name="hours${d}" type="number" min="0" max="24" step="any" value="${p.schedule[d]?.hours||0}" required><input aria-label="${DAY_NAMES[d]} Feierabend" name="end${d}" type="text" inputmode="numeric" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]|24:00" placeholder="16:00" value="${p.schedule[d]?clock(timeMinutes(p.schedule[d].start)+p.schedule[d].hours*60):''}">`).join('')}</div><p id="weekTotal" class="help"></p>${actions(id?'<button type="button" id="deletePerson" class="danger">Löschen</button>':'')}</form>`);
+  modal(`<h2>${id?'Person bearbeiten':'Person hinzufügen'}</h2><form id="personForm"><label class="field">Anrede<input name="salutation" maxlength="40" list="salutations" value="${esc(p.salutation||'')}" placeholder="z. B. Herr, Frau oder Dienstgrad"><datalist id="salutations"><option>Herr</option><option>Frau</option></datalist></label><label class="field">Name<input name="name" required maxlength="100" value="${esc(p.name)}"></label><label class="field">Team<input name="team" maxlength="100" value="${esc(p.team)}"></label><h3>Individuelle Arbeitswoche</h3><p class="help">Je Tag Beginn, Stunden oder Feierabend ändern. Beginn + Stunden = Feierabend, ohne automatischen Pausenabzug. 0 Stunden = arbeitsfrei. Samstag und Sonntag sind frei planbar. Einzelne Datums-Ausnahmen über die Tageszelle ändern. Ein ganzer Tag belegt die vollständige individuelle Tagesarbeitszeit. Änderungen gelten auch für vergangene Auswertungen.</p><div class="schedule-grid"><b>Tag</b><b>Beginn</b><b>Stunden</b><b>Feierabend</b>${[1,2,3,4,5,6,0].map(d=>`<label for="hours${d}">${DAY_NAMES[d]}</label><input aria-label="${DAY_NAMES[d]} Beginn" type="time" name="start${d}" value="${p.schedule[d]?.start||'08:00'}" required><input id="hours${d}" name="hours${d}" type="number" min="0" max="24" step="any" value="${p.schedule[d]?.hours||0}" required><input aria-label="${DAY_NAMES[d]} Feierabend" name="end${d}" type="text" inputmode="numeric" pattern="(?:[01][0-9]|2[0-3]):[0-5][0-9]|24:00" placeholder="16:00" value="${p.schedule[d]?clock(timeMinutes(p.schedule[d].start)+p.schedule[d].hours*60):''}">`).join('')}</div><p id="weekTotal" class="help"></p><p id="personError" class="form-error" role="alert"></p>${actions(id?'<button type="button" id="deletePerson" class="danger">Löschen</button>':'')}</form>`);
   const total=()=>$('#weekTotal').textContent='Summe: '+number([0,1,2,3,4,5,6].reduce((n,d)=>n+Number($('#personForm').elements['hours'+d].value),0))+' h/Woche';
   $('#personForm').oninput=e=>{const f=$('#personForm').elements,m=e.target.name?.match(/^(start|hours|end)([0-6])$/);if(m){const d=m[2];if(m[1]==='end'&&(validTime(f['end'+d].value)||f['end'+d].value==='24:00')){const h=(timeMinutes(f['end'+d].value)-timeMinutes(f['start'+d].value))/60;if(h>=0)f['hours'+d].value=h}else if(m[1]!=='end')f['end'+d].value=Number(f['hours'+d].value)>0?clock(timeMinutes(f['start'+d].value)+Number(f['hours'+d].value)*60):''}total()};total();
   $('#personForm').onsubmit=e=>{
     e.preventDefault();const f=new FormData(e.target),schedule={};
     for(let d=0;d<7;d++) if(Number(f.get('hours'+d))) schedule[d]={start:f.get('start'+d),hours:Number(f.get('hours'+d))};
-    for(let d=0;d<7;d++)if(schedule[d]&&Math.abs(timeMinutes(f.get('end'+d))-timeMinutes(schedule[d].start)-schedule[d].hours*60)>0.01){toast('Bitte Feierabend und Stunden prüfen.');return}
+    for(let d=0;d<7;d++)if(schedule[d]&&(!(validTime(f.get('end'+d))||f.get('end'+d)==='24:00')||Math.abs(timeMinutes(f.get('end'+d))-timeMinutes(schedule[d].start)-schedule[d].hours*60)>0.01)){toast('Bitte Feierabend und Stunden prüfen.');return}
     const item={...p,id:id||uid(),name:f.get('name').trim(),salutation:f.get('salutation').trim(),team:f.get('team').trim(),schedule};
-    try { commit(x=>{if(id)x.people[x.people.findIndex(p=>p.id===id)]=item;else x.people.push(item)});close(); }
-    catch(err){toast(err.message)}
+    try { commit(x=>{if(id)updatePerson(x,item);else x.people.push(item)});close(); }
+    catch(err){$('#personError').textContent=err.message}
   };
   if(id) $('#deletePerson').onclick=()=>{if(requestsFor().some(r=>r.personId===id&&['pending','approved'].includes(requestStatus(r)))){toast('Bitte offene Anträge und genehmigten Urlaub zuerst klären.');return}if(confirm('Person und alle ihre Einsätze löschen?')){commit(x=>{x.people=x.people.filter(p=>p.id!==id);x.assignments=x.assignments.filter(a=>a.personId!==id)});close()}};
 }
@@ -1286,7 +1307,7 @@ function assignmentForm(opts={}) {
 // Personen-Detail: konkrete Tage, Uhrzeiten, flexible Reservierungen und Konflikte.
 function personDetail(id,range=currentRange()) {
   const p=db.people.find(p=>p.id===id),s=summarize(p,db.assignments,range,db.projects);
-  modal(`<h2>${esc(personDisplayName(p))}</h2><p>${fullDate(range.start)} – ${fullDate(range.end)} · ${number(s.free)} h rechnerisch frei</p><div class="detail-list">${s.days.filter(d=>d.capacity||d.entries.length).map(d=>`<section class="day-detail"><b>${DAY_NAMES[date(d.day).getUTCDay()]} ${fullDate(d.day)} · ${number(d.booked)} / ${number(d.capacity)} h ${d.conflict?'<span class="red"> · Konflikt</span>':''}</b><div>${d.entries.map(e=>`<button class="detail-entry" data-edit-id="${esc(e.a.id)}" data-edit-day="${d.day}">${esc(db.projects.find(p=>p.id===e.a.projectId).name)} · ${e.from===null?assignmentLabel(e.a):clock(e.from)+'–'+clock(e.to)} · ${number(e.hours)} h${e.a.note?'<small>'+esc(e.a.note)+'</small>':''}</button>`).join('')||'<span class="muted">Frei</span>'}</div></section>`).join('')||'<p>Keine Arbeitstage oder Einsätze.</p>'}</div><div class="dialog-actions"><button data-close>Schließen</button><button id="detailPlan" class="primary">Einsatz hinzufügen</button></div>`);
+  modal(`<h2>${esc(personDisplayName(p))}</h2><p>${fullDate(range.start)} – ${fullDate(range.end)} · ${number(s.free)} h rechnerisch frei</p><div class="detail-list">${s.days.filter(d=>d.capacity||d.entries.length).map(d=>`<section class="day-detail"><b>${DAY_NAMES[date(d.day).getUTCDay()]} ${fullDate(d.day)} · ${number(d.booked)} / ${number(d.capacity)} h ${d.conflict?'<span class="red"> · Konflikt</span>':''}</b><div>${d.entries.map(e=>`<button class="detail-entry" data-edit-id="${esc(e.a.id)}" data-edit-day="${d.day}">${esc(db.projects.find(p=>p.id===e.a.projectId).name)} · ${e.from===null?assignmentLabel(e.a):clock(e.from)+'–'+clock(e.to)} · ${number(e.hours)} h${e.a.note?'<small>'+esc(e.a.note)+'</small>':''}</button>`).join('')||'<span class="muted">Frei</span>'}</div></section>`).join('')||'<p>Keine Arbeitstage oder Einsätze.</p>'}</div><div class="dialog-actions"><button data-close>Schließen</button>${canEditPlan()?`<button data-person="${esc(p.id)}">Person bearbeiten</button>`:''}<button id="detailPlan" class="primary">Einsatz hinzufügen</button></div>`);
   document.querySelectorAll('[data-edit-id]').forEach(b=>b.onclick=()=>{close();chooseAssignment(b.dataset.editId,b.dataset.editDay)});
   $('#detailPlan').onclick=()=>{close();assignmentForm({personId:id,start:range.start,end:range.end})};
 }
@@ -2109,14 +2130,14 @@ function workCellBody(p,b,s,bar){
  return '<span class="work-blocks">'+shown.map(e=>{const pr=db.projects.find(p=>p.id===e.a.projectId);return `<span class="work-block ${pr.kind}" style="--project:${pr.color}"><strong>${esc(pr.name)}</strong><small>${e.from===null?'Flexibel · '+number(e.hours)+' h':clock(e.from)+'–'+clock(e.to)}</small></span>`}).join('')+(entries.length>3?'<small>+'+(entries.length-3)+' weitere Einsätze</small>':'')+(s.free>0?'<small class="work-free">'+number(s.free)+' h frei</small>':'')+(!entries.length&&!s.capacity?'<span class="muted">Arbeitsfrei</span>':'')+'</span>';
 }
 function administration(){
- modal('<h2>Verwalten</h2><div class="admin-grid"><button data-admin="person">Person hinzufügen</button><button data-people-import>Personal importieren</button><button data-admin="project">Vorhaben hinzufügen</button><button data-admin="copy">Woche übernehmen</button><button data-admin="plan">Detailplanung öffnen</button><button data-admin="data">Ordner & Daten</button><button data-admin="export">Export & Drucken</button><button data-admin="guide">Anleitung</button></div><p class="help">Personen bearbeiten: in der Detailplanung auf den Namen klicken. Vorhaben bearbeiten: in der Vorhabenansicht auf den Namen klicken.</p><div class="dialog-actions"><button data-close>Schließen</button></div>');
+ modal('<h2>Verwalten</h2><div class="admin-grid"><button data-admin="people">Personal bearbeiten</button><button data-admin="person">Person hinzufügen</button><button data-people-import>Personal importieren</button><button data-admin="project">Vorhaben hinzufügen</button><button data-admin="copy">Woche übernehmen</button><button data-admin="plan">Detailplanung öffnen</button><button data-admin="data">Ordner & Daten</button><button data-admin="export">Export & Drucken</button><button data-admin="guide">Anleitung</button></div><p class="help">Personen bearbeiten: „Personal bearbeiten“ öffnen oder auf der Personaltafel einen Namen anklicken und „Person bearbeiten“ wählen. Vorhaben bearbeiten: in der Vorhabenansicht auf den Namen klicken.</p><div class="dialog-actions"><button data-close>Schließen</button></div>');
 }
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
  if(b.id==='createBoardProject')editProject();if(b.id==='projectPrint')printReport('projects');if(b.id==='adminMenu')administration();if(b.id==='quickAssign')assignmentForm();if(b.id==='copyWeek')copyWeekDialog();
 
  if(b.dataset.staffing)staffingDialog(b.dataset.staffing);
  if(b.dataset.projectDetail)projectDetail(b.dataset.projectDetail,Number(b.dataset.projectIndex));
- if(b.dataset.admin){close();({person:()=>editPerson(),project:()=>editProject(),copy:copyWeekDialog,plan:()=>{surface='plan';render()},data:dataDialog,export:exportDialog,guide:openManual})[b.dataset.admin]?.()}
+ if(b.dataset.admin){close();({people:managePeople,person:()=>editPerson(),project:()=>editProject(),copy:copyWeekDialog,plan:()=>{surface='plan';render()},data:dataDialog,export:exportDialog,guide:openManual})[b.dataset.admin]?.()}
 });
 
 $('#projectSearch').addEventListener('input',()=>renderProjectOverview());
