@@ -3,37 +3,33 @@
 Vollständig lokale Personalplanung als einzelne HTML-Datei, für Edge unter Windows.
 Keine Installation, kein Webserver, keine externen Bibliotheken erforderlich.
 
-## Start
+## Bedienung
 
-1. `index.html` herunterladen und lokal in Edge öffnen.
-2. Die Beispieldaten sind ausschließlich fiktiv. Mit „Eigene Planung starten“ leeren.
-3. Unter „Verwalten“ Personal erfassen oder CSV/Excel-Zellen importieren.
-4. Mit „+ Vorhaben“ Vorhaben anlegen. Person/Tag doppelt anklicken und ganzen Tag,
-   erste oder zweite Arbeitshälfte zuweisen. Mehrere Tage/Personen und genaue
-   Uhrzeiten sind über „+ Zuweisung“ möglich.
-5. Person/Tag auswählen, dann „Kommentar“, Rechtsklick oder Umschalt+F2 verwenden.
-6. „Daten speichern“ lädt eine JSON-Datei herunter. Außerhalb des Repo-Ordners
-   aufbewahren. Wieder öffnen: Verwalten → Export & Drucken → JSON-Sicherung öffnen.
+App herunterladen und in Edge öffnen. Neue Zuweisungen und Urlaub gelten für ganze
+individuelle Arbeitstage. Vorhandene Teilbuchungen bleiben unverändert nachvollziehbar
+und sind mit * markiert. Bearbeiten einer regulären Altbuchung stellt diese auf ganze
+Tage um; genehmigter Urlaub bleibt an den Antragsablauf gebunden.
 
-## Kompakte Darstellung
+Vorhaben erhalten ein eigenes eindeutiges Kürzel (bis 6 Zeichen), Farbe und eigene
+Art (Übung, Ausbildung usw.). „Auswirkung auf Verfügbarkeit“ unterscheidet Arbeit,
+Abwesenheit und Abgabe. Bestehende Kürzel lassen sich im Vorhabendialog ändern.
+Ohne Kürzel erscheinen vorläufig die ersten vier Buchstaben des Namens.
 
-Start: Monatsansicht, 19 Pixel je Personenzeile. 30 Personen benötigen etwa 570
-Pixel zuzüglich Kopfbereich. Je nach Bildschirmhöhe/Zoom ist Scrollen nötig.
-„Besprechungsmodus“ blendet Bedienbereiche aus. „Normale Zeilen“ vergrößert die
-Darstellung. Name und Datum bleiben beim Scrollen fixiert.
+Personal besitzt eine frei eingebbare Anrede (auch Dienstgrad). Im CSV-Import ist
+„Anrede“ eine optionale zusätzliche Kopfspalte. Keine automatische Anredezuordnung.
 
-Links/rechts im Tagesfeld stehen die beiden Hälften der individuellen Arbeitszeit.
-V01 usw. entsprechen der Vorhabenlegende. Ein durchgehendes Feld bedeutet volle
-Belegung beider Hälften; ein Punkt teilweise Belegung, … mehrere Vorhaben.
-Prozentplanung ist zeitlich flexibel und wird rechnerisch auf beide Hälften verteilt.
-Schwarz = abgegeben, Schraffur = Abwesenheit, roter Rand = Konflikt.
-Kommentare sind je Person und Tag gespeichert, unabhängig von der Zuweisung.
-Eine violette Ecke markiert die Zelle, der Text erscheint beim Darüberfahren.
-Einfacher Klick wählt eine Zelle, Pfeiltasten bewegen die Auswahl, Doppelklick/Enter
-öffnet die Zuweisung. Rechtsklick/Umschalt+F2 öffnet den Kommentar.
-Kommentare stehen beim Ausdruck mit Name und Datum vollständig unter dem Plan.
-Alte allgemeine Tageshinweise bleiben erhalten; es erfolgt keine automatische
-Zuordnung dieser Hinweise zu Mitarbeitern.
+„Filter ▾“ oder der Personenspaltenkopf öffnet Mehrfachwahl für Teams, Anreden und
+Vorhabenarten sowie Namenssortierung. Suche und direkte Filter gelten zusätzlich.
+„Zurücksetzen“ entfernt alle Filter; Ausdrucke übernehmen die Personenauswahl.
+
+Klick wählt Zellen aus, Pfeile navigieren, Doppelklick/Enter öffnet die Zuweisung.
+Rechtsklick/Umschalt+F2 öffnet den Zellkommentar. Violette Ecke = Kommentar.
+Kommentare erscheinen vollständig mit Name und Datum unter dem Ausdruck.
+
+Monatszeilen bleiben kompakt (19 Pixel). „Besprechungsmodus“ blendet Bedienung aus.
+Der schmale zweizeilige Kopfbereich trennt Navigation von Werkzeugen.
+„Daten speichern“ exportiert lokal JSON; unter Verwalten → Export & Drucken wieder
+öffnen. Nutzdaten außerhalb des Repository-Ordners aufbewahren.
 
 ## Datenschutz und Dateiserver
 
