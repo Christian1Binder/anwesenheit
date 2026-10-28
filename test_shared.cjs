@@ -11,7 +11,8 @@ const ctx={console,crypto,Date,localStorage:{getItem:k=>memory.get(k)||null,setI
 vm.createContext(ctx);
 vm.runInContext(core+'\n'+html.slice(html.indexOf('function validateCellNotes('),html.indexOf('function notesForCell('))+'\n'+html.slice(html.indexOf('function validateDayNotes('),html.indexOf('function dayNotesRow('))+'\n'+html.split('function validateStaffing(s){')[1].split('function coverageFor')[0].replace(/^/, 'function validateStaffing(s){')+'\n'+subset+'\nglobalThis.t={migrate,validate,validateRequest,applyDecision,requestStatus,requestsFor,requestAssignment,dayStats,summarize,parseEnvelope,writeFileText,readFileText,scanRequests,publishData,acquireLease,releaseLease,assertUnchanged,canEditPlan,shared,profile,sessionId};',ctx);
 const t=ctx.t;
-const p={id:'m1',name:'Testperson',team:'Testteam',schedule:{1:{start:'08:00',hours:8},2:{start:'08:00',hours:6},3:{start:'08:00',hours:8},4:{start:'08:00',hours:8},5:{start:'08:00',hours:8}}};
+// Bestehende Workflow-Stundenfälle nutzen explizite Pausenanrechnung.
+const p={breakMode:'credited',id:'m1',name:'Testperson',team:'Testteam',schedule:{1:{start:'08:00',hours:8},2:{start:'08:00',hours:6},3:{start:'08:00',hours:8},4:{start:'08:00',hours:8},5:{start:'08:00',hours:8}}};
 const base=()=>({version:3,id:'plan1',demo:false,people:[p],projects:[],assignments:[],requests:[],decisions:[]});
 const req=(extra={})=>({format:'teamplan-request',version:1,id:crypto.randomUUID(),planId:'plan1',type:'leave',personId:'m1',personName:'Testperson',createdBy:'Testperson',createdAt:new Date().toISOString(),start:'2026-09-07',end:'2026-09-07',mode:'morning',timeStart:'09:00',timeEnd:'11:00',days:[0,1,2,3,4,5,6],note:'',...extra});
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -65,3 +66,10 @@ async function setup(){const dir=new Dir('Testordner'),env={format:'teamplan-sha
  const remove=await t.releaseLease();assert(!t.canEditPlan());
  console.log('PASS: request → approval → cancellation; immutable decision snapshot; rejection and pending withdrawal; no double booking; individual halves; 90 minutes; year boundary; detached capacity and conflicts; v1/v2 migration; stale-version stop; failed backup preserves main plan; foreign editor stop; separate concurrent request files; corrupt request isolation; explicit release.');
 })().catch(e=>{console.error(e);process.exitCode=1});
+// Dieselbe Genehmigungskette mit regulärem Pausenabzug: keine doppelte Kürzung.
+const pausePlan=base();pausePlan.people=[{...p,breakMode:'auto'}];const pauseRequest=req({mode:'full'});pausePlan.requests.push(pauseRequest);
+const pauseApproved=t.applyDecision(pausePlan,pauseRequest,'approved','Planer','');t.validate(pauseApproved);
+const pauseResult=t.summarize(pauseApproved.people[0],pauseApproved.assignments,pauseRequest,pauseApproved.projects);
+assert.equal(pauseResult.absence,7.5);assert.equal(pauseResult.free,0);assert.equal(pauseResult.overtime,0);
+assert.equal(t.requestsFor(pauseApproved)[0].mode,'full');
+console.log('PASS: tatsächliche Urlaubsgenehmigung mit Standardpause, Netto-Soll ohne doppelten Abzug, keine freie Pausenkapazität.');
